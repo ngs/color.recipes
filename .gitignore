@@ -5,6 +5,8 @@ dist/
 # Build artifacts: generated from schemes/*.json by scripts/build-index.ts
 public/index.json
 public/og/
+public/sitemap.xml
+public/llms.txt
 
 # Worker local secrets (never commit)
 .dev.vars

@@ -3,6 +3,7 @@
 > Personal product (ngs). A **searchable, curated color-scheme gallery with AI-assisted PR contributions**.
 > Domain: `color.recipes` (owned). Design frozen: 2026-06-18.
 > This file is the **source-of-truth spec**. A separate Claude Code session may start implementation from here.
+> **Status: built and deployed at https://color.recipes.** Refinements made since the freeze (path routing, SSR + OG, fork-owner selection, fonts, SEO files) are summarized in §12.
 
 ## 1. What we are building
 
@@ -26,9 +27,10 @@ Contribution flow (when there are zero matches):
 - **Auth = OAuth Web flow (authorization code) + a Cloudflare Worker** (not Device Flow). **Public — anyone can log in with GitHub.**
 - **Token handling = option (i)**: the **Worker keeps the token in an httpOnly cookie and proxies fork/commit/PR** (the token never reaches the browser).
 - **Hosting = Cloudflare, single origin**: **one Worker with static assets** (`/api/*` = OAuth + write proxy, everything else = static serving). Same origin enables an **httpOnly / Secure / SameSite=Lax first-party cookie** with no CORS.
-- **Reads are statically baked at build time** (`schemes/*.json` → `dist/index.json` + a tag index; no runtime GitHub read API).
+- **Reads are statically baked at build time** (`schemes/*.json` → `public/index.json` + a tag index; no runtime GitHub read API).
 - **Colors stored as hex**; convert to other color spaces (hex/rgb/hsl/oklch) client-side for display/export.
 - **AI prompt in English, default 5 colors.**
+- **Post-freeze refinements** (path routing, SSR + OG images, fork-owner selection, Pliant font, SEO files): see §12.
 
 ## 3. Hard constraints
 
@@ -39,9 +41,9 @@ Contribution flow (when there are zero matches):
 
 ## 4. Architecture
 
-- **Data**: `schemes/*.json` (this repo). At build time, `scripts/build-index.ts` aggregates them into `dist/index.json` (all schemes) plus a tag index, served statically.
-- **Frontend (static, TS)**: gallery display, auto-rotation, animation, tag search, color-space conversion, prompt generation, JSON paste/preview.
-- **Worker (`/api/*`)**: OAuth (login/callback/me/logout) + write proxy (fork → commit → PR) + static asset serving. The token stays in the httpOnly cookie and never reaches the browser.
+- **Data**: `schemes/*.json` (this repo). At build time, `scripts/build-index.ts` aggregates them into `public/index.json` (all schemes) plus a tag index, and also generates one **OG image** per scheme, `sitemap.xml`, and `llms.txt`. All served statically.
+- **Frontend (static, TS)**: gallery display, auto-rotation, animation, tag search, color-space conversion + multi-format export, prompt generation, JSON paste/preview. **Path-based routing** `/<slug>?t=tags` via the History API (manual change = pushState, auto-rotation = replaceState).
+- **Worker**: `/api/*` = OAuth (login/callback/me/logout) + write proxy (fork → commit → PR) + fork-owner listing; the token stays in the httpOnly cookie and never reaches the browser. The Worker also **SSRs per-scheme meta** (title/description/Open Graph/Twitter) for navigations and **forces HTTPS** (Workers Custom Domains bypass the zone's Always Use HTTPS). `assets.run_worker_first` covers navigations + `/api/*`; hashed bundles and OG images stay assets-first.
 - **AI**: none server-side. The user copies the prompt and runs it themselves.
 
 ### Cost (effectively free indefinitely for this shape)
@@ -55,21 +57,29 @@ Contribution flow (when there are zero matches):
 color.recipes/
 ├─ schemes/                    # Curated data. Contribution PRs add one file here.
 │  └─ sunset-retro.json
-├─ schema/scheme.schema.json   # JSON Schema (shared by CI and client validation)
+├─ schema/scheme.schema.json   # JSON Schema (canonical; CI validates with ajv)
 ├─ src/                        # TS frontend (static)
-│  ├─ main.ts                  # Gallery display, auto-rotation, animation, tag search, URL-fragment restore
-│  ├─ color.ts                 # hex -> rgb/hsl/oklch conversion, export formatting
-│  └─ submit.ts                # Prompt generation/copy, JSON paste/preview, calls /api/submit
-├─ worker/index.ts             # OAuth (/api/auth/*) + write proxy (/api/submit) + static asset serving
-├─ scripts/build-index.ts      # schemes/*.json -> dist/index.json + tag index
+│  ├─ main.ts                  # Gallery, rotation/animation, tag search, path routing (/<slug>?t=)
+│  ├─ color.ts                 # hex -> rgb/hsl/oklch, mixing, formatting
+│  ├─ submit.ts                # Prompt copy, JSON paste/preview, fork-owner picker, /api/submit
+│  ├─ export.ts                # Palette export (JSON/CSS/SCSS/SVG/Android/Xcode/Swift/MUI/AntD/Tailwind)
+│  ├─ validate.ts              # Shared validation (scheme + repo name); eval-free for client + Worker
+│  └─ types.ts / style.css
+├─ worker/index.ts             # /api/* (OAuth + write proxy + fork owners) + SSR + HTTPS redirect
+├─ scripts/
+│  ├─ build-index.ts           # schemes/*.json -> index.json + tag index + OG PNGs + sitemap.xml + llms.txt
+│  ├─ validate-schemes.ts      # CI: validate schemes against the JSON Schema (ajv)
+│  └─ ui-check.ts              # CI: headless Playwright UI test
+├─ public/robots.txt           # static (index.json / og / sitemap.xml / llms.txt are generated)
 ├─ index.html
-├─ wrangler.jsonc              # Worker (assets) config; route color.recipes/*
-├─ package.json / tsconfig.json / vite.config.ts
+├─ wrangler.jsonc              # Worker + assets config; custom domain color.recipes
+├─ package.json / tsconfig*.json / vite.config.ts
 └─ .github/workflows/
-   ├─ validate.yml             # Validate schemes against JSON Schema on PR (language-agnostic)
-   └─ deploy.yml               # build-index -> build -> deploy to Cloudflare
+   ├─ validate.yml             # Validate schemes against the JSON Schema on PR
+   ├─ test.yml                 # typecheck + test:ui (Playwright)
+   └─ deploy.yml               # build -> deploy to Cloudflare on push to main
 ```
-- DNS / Worker route / Worker secrets are added via Terraform in the separate repo `ngs/littleapps-cloudflare-terraform` (follow the existing conventions; see `d1.tf` etc.).
+- The Cloudflare **zone, email (Google Workspace), and www redirect** are managed via Terraform in `ngs/littleapps-cloudflare-terraform`. The **Worker custom domain + its DNS** are managed by `wrangler` (the app owns its routing).
 
 ## 6. Scheme JSON schema (MVP, frozen)
 
@@ -118,25 +128,29 @@ Requirements:
 
 ## 8. Worker endpoints
 
-- `GET /api/auth/login` → issue `state` → redirect to GitHub authorize (`scope=public_repo`).
+- `GET /api/auth/login` → issue `state` → redirect to GitHub authorize (`scope=public_repo read:org`).
 - `GET /api/auth/callback?code&state` → exchange `code` + client_secret for an access token → store in an **httpOnly cookie** → redirect back to the app.
 - `GET /api/auth/me` → return the current user via the cookie token (401 if not logged in).
 - `POST /api/auth/logout` → clear the cookie.
-- `POST /api/submit` (body = scheme JSON) → validate server-side against the JSON Schema → ensure a fork exists (`POST /repos/{upstream}/forks`) → commit `schemes/<slug>.json` to the fork (Contents or Git Data API) → open a PR to upstream (`POST /repos/{upstream}/pulls`, head=`fork:branch`) → **return the PR URL**.
-- Everything else → serve static assets.
+- `GET /api/fork/owners` → accounts the user can fork into (themselves + their orgs), each with a `canCreate` flag (admins / org public-repo policy) so the UI can grey out owners without permission.
+- `GET /api/fork/check?owner=&name=` → whether `<owner>/<name>` is `available` / `isOurFork` / `isUpstream`, so the client can pick a target and validate the name.
+- `POST /api/submit` (body `{ scheme, forkOwner, forkName }`) → validate the scheme server-side against the JSON Schema → fork into the chosen owner (`organization` for orgs; commit directly when the owner is the upstream owner, since you cannot fork your own repo) → commit `schemes/<slug>.json` → open a PR to upstream (head=`forkOwner:branch`) → **return the PR URL**. The fork's real owner/name are read back from the API so a name collision never targets the wrong repo.
+- Navigations (`/`, `/<slug>`) → **SSR'd HTML** (per-scheme meta); everything else → static assets; `http` → `301` `https`.
 
-### Cloudflare / GitHub setup (at implementation time)
-- Create a **GitHub OAuth App** (callback = `https://color.recipes/api/auth/callback`, scope = `public_repo`). `client_id` is public; `client_secret` is a Worker secret.
-- **Worker secrets**: `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `COOKIE_SECRET` (for cookie signing/encryption) / `UPSTREAM_REPO` (e.g. `ngs/color.recipes`).
-- **wrangler**: bind static assets to the Worker (assets), route `color.recipes/*`.
-- Cookie: `HttpOnly; Secure; SameSite=Lax; Path=/`. Store the token signed/encrypted in the cookie (or move it to a KV-backed session).
+### Cloudflare / GitHub setup
+- Create a **GitHub OAuth App** (callback = `https://color.recipes/api/auth/callback`, scopes requested at login = `public_repo read:org`). `client_id` is public; `client_secret` is a Worker secret.
+- **Worker secrets**: `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `COOKIE_SECRET` (cookie signing) — set via `wrangler secret put`. `UPSTREAM_REPO` (e.g. `ngs/color.recipes`) is a public `var` in `wrangler.jsonc`.
+- **wrangler**: static assets bound to the Worker; production route is a **custom domain** (`{ pattern: "color.recipes", custom_domain: true }`), which wrangler creates with its DNS on deploy.
+- **CI deploy** (`deploy.yml`): needs only `CLOUDFLARE_API_TOKEN` (Workers Scripts/Routes + the zone's DNS/Zone read). The account is inferred from the token.
+- Cookie: `HttpOnly; Secure; SameSite=Lax; Path=/`, value signed with `COOKIE_SECRET` (HMAC).
 
 ## 9. Functional requirements (MVP)
 
-- Gallery display (random one → auto-rotate → animated transition; respect `prefers-reduced-motion`; pause on interaction).
-- Tag search (multiple, ANDed; encode in the **URL fragment `#`** for share/restore; prefer a version prefix).
-- Zero-match contribution flow (generate/copy prompt → paste/preview JSON → login → fork + PR).
-- Keep each color as hex; convert to multiple color spaces (hex/rgb/hsl/oklch) for display/export.
+- Gallery display (random one → auto-rotate → animated transition; respect `prefers-reduced-motion`; pause on interaction; the UI chrome adopts the displayed scheme's palette).
+- Tag search (multiple, ANDed). State lives in the **URL path + query**: `/<slug>?t=tag-a,tag-b` (path = displayed scheme). Manual changes `pushState`, auto-rotation `replaceState`, `popstate` restores.
+- Per-scheme **SSR meta** (title / description / Open Graph / Twitter) and a build-time **palette OG image**; `robots.txt` + `sitemap.xml` + `llms.txt` expose every scheme URL.
+- Zero-match contribution flow (generate/copy prompt → paste/preview JSON → login → **choose fork owner + name** → fork + PR).
+- Keep each color as hex; convert to multiple color spaces (hex/rgb/hsl/oklch) and **export in 10 developer formats**.
 
 ## 10. Non-goals
 
@@ -147,5 +161,18 @@ Requirements:
 
 - Whether to carry `role` in the schema for MVP (currently no; plain array).
 - Duplicate/similar-scheme detection (warn on near-identical palettes at submit time).
-- Seed schemes (manually add a few into `schemes/`).
 - Transition presentation (full-background vs swatches) and rotation interval.
+- OG image variant with the scheme name rendered (currently palette bands only).
+
+## 12. Implementation notes (post-freeze)
+
+Built and deployed; these refine the 2026-06-18 design:
+
+- **Routing**: path + query `/<slug>?t=tags` via the History API (manual = pushState, auto-rotate = replaceState, popstate restores) — replaces the planned URL fragment.
+- **SSR + OG**: the Worker injects per-scheme `<title>` / description / Open Graph / Twitter meta for navigations; `build-index.ts` generates one palette PNG per scheme (`/og/<slug>.png`, 1200×630, palette bands) via `pngjs`.
+- **SEO**: `public/robots.txt` (static) + generated `sitemap.xml` and `llms.txt` listing every scheme URL.
+- **Hosting**: served on the apex via a **wrangler-managed Workers Custom Domain** (not a zone route). Custom Domains bypass the zone's Always Use HTTPS / page rules, so the Worker forces `http → https` (and `assets.run_worker_first` is scoped so static bundles stay assets-first). The account is inferred from the API token (no `CLOUDFLARE_ACCOUNT_ID`).
+- **Contribution**: the user picks a **fork owner** (their account or an org with create permission) and the repo name — both checked for validity and availability before submit. OAuth scope is `public_repo read:org`.
+- **Fonts**: **Pliant** (Google Fonts), weights 400/500/600/700.
+- **Validation**: `schema/scheme.schema.json` is canonical (enforced in CI with ajv); `src/validate.ts` mirrors it (dependency-free, eval-free) for the client and Worker.
+- **CI**: `validate.yml` (schemas), `test.yml` (typecheck + Playwright `test:ui`), `deploy.yml` (deploy on push to `main`).

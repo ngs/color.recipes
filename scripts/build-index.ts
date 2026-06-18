@@ -10,13 +10,45 @@ import { validateScheme, slugify } from "../src/validate.ts";
 import { hexToRgb } from "../src/color.ts";
 import type { IndexedScheme, SchemeIndex } from "../src/types.ts";
 
+const SITE = "https://color.recipes";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const schemesDir = join(root, "schemes");
 const outFile = join(root, "public", "index.json");
 const ogDir = join(root, "public", "og");
+const sitemapFile = join(root, "public", "sitemap.xml");
+const llmsFile = join(root, "public", "llms.txt");
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
+
+// sitemap.xml: the root plus a permalink (/<slug>) for every scheme.
+function buildSitemap(schemes: IndexedScheme[]): string {
+  const urls = [
+    `  <url><loc>${SITE}/</loc></url>`,
+    ...schemes.map(
+      (s) => `  <url><loc>${SITE}/${s.slug}</loc><lastmod>${s.createdAt}</lastmod></url>`,
+    ),
+  ].join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+}
+
+// llms.txt (llmstxt.org): a machine-readable map of the site and every scheme.
+function buildLlms(schemes: IndexedScheme[]): string {
+  const list = schemes
+    .map((s) => `- [${s.name}](${SITE}/${s.slug}): ${s.tags.join(", ")}`)
+    .join("\n");
+  return (
+    `# color.recipes\n\n` +
+    `> A searchable, curated color-scheme gallery with AI-assisted PR contributions. ` +
+    `Each scheme has a permalink at /<slug> (with an Open Graph palette image); tags filter ` +
+    `the gallery via ?t=tag-a,tag-b (ANDed). Contributions are GitHub pull requests that add ` +
+    `schemes/<slug>.json.\n\n` +
+    `## Data\n\n` +
+    `- [Scheme index (JSON)](${SITE}/index.json): every scheme with name, tags, and hex colors\n` +
+    `- [Repository](https://github.com/ngs/color.recipes): source and the schemes/*.json data\n\n` +
+    `## Color schemes\n\n${list}\n`
+  );
+}
 
 // Open Graph image: the palette as vertical bands (no text — the name is in og:title).
 function writeOgImage(scheme: IndexedScheme): void {
@@ -86,6 +118,10 @@ writeFileSync(outFile, JSON.stringify(index) + "\n");
 mkdirSync(ogDir, { recursive: true });
 for (const scheme of index.schemes) writeOgImage(scheme);
 
+writeFileSync(sitemapFile, buildSitemap(index.schemes));
+writeFileSync(llmsFile, buildLlms(index.schemes));
+
 console.log(
-  `build-index: ${index.schemes.length} scheme(s), ${Object.keys(index.tags).length} tag(s) -> public/index.json + ${index.schemes.length} OG image(s)`,
+  `build-index: ${index.schemes.length} scheme(s), ${Object.keys(index.tags).length} tag(s) -> ` +
+    `public/index.json + ${index.schemes.length} OG image(s) + sitemap.xml + llms.txt`,
 );
