@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Ink Wash",
+  "tags": [
+    "monochrome",
+    "minimal",
+    "japanese",
+    "dark",
+    "calm",
+    "grey"
+  ],
+  "colors": [
+    "#121417",
+    "#34383d",
+    "#5e636a",
+    "#969ba2",
+    "#e7e9ec"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

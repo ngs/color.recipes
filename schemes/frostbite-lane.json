@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Frostbite Lane",
+  "tags": [
+    "city",
+    "winter",
+    "night",
+    "urban",
+    "cool",
+    "moody"
+  ],
+  "colors": [
+    "#121620",
+    "#28324a",
+    "#45597a",
+    "#7e93b0",
+    "#d6e0ee"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

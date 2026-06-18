@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Snowy Pines",
+  "tags": [
+    "snow",
+    "winter",
+    "forest",
+    "green",
+    "cool",
+    "calm"
+  ],
+  "colors": [
+    "#16241f",
+    "#2f4a3e",
+    "#5e7d6c",
+    "#9db8a6",
+    "#e9f1ec"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

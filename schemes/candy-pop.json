@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Candy Pop",
+  "tags": [
+    "candy",
+    "pastel",
+    "vibrant",
+    "playful",
+    "pink",
+    "bold"
+  ],
+  "colors": [
+    "#2d2440",
+    "#d14e8a",
+    "#ff8ab0",
+    "#ffd36e",
+    "#8ee0d0"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

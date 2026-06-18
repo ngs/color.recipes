@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Yoru",
+  "tags": [
+    "japanese",
+    "night",
+    "dark",
+    "moody",
+    "minimal",
+    "indigo"
+  ],
+  "colors": [
+    "#0b1320",
+    "#1c2b3a",
+    "#2f4a5e",
+    "#56707f",
+    "#d7cdb8"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

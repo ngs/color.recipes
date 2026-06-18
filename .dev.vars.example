@@ -1,0 +1,16 @@
+# Local Worker secrets for `wrangler dev` / `vite dev` (SPEC §8).
+# Copy to .dev.vars (gitignored) and fill in. NEVER commit real secrets.
+#
+# Create a GitHub OAuth App with:
+#   - Authorization callback URL: http://localhost:5173/api/auth/callback  (local)
+#                                  https://color.recipes/api/auth/callback  (prod)
+#   - Scope is requested by the Worker at login time (public_repo).
+
+GITHUB_CLIENT_ID="your-oauth-app-client-id"
+GITHUB_CLIENT_SECRET="your-oauth-app-client-secret"
+
+# Random high-entropy string used to sign the auth cookie (e.g. `openssl rand -hex 32`).
+COOKIE_SECRET="change-me-to-a-long-random-string"
+
+# Upstream repo that contribution PRs target.
+UPSTREAM_REPO="ngs/color.recipes"

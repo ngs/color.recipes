@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Icebound River",
+  "tags": [
+    "river",
+    "winter",
+    "snow",
+    "cool",
+    "icy",
+    "calm",
+    "blue"
+  ],
+  "colors": [
+    "#13202a",
+    "#27424f",
+    "#4a6f7c",
+    "#8fb0b4",
+    "#dfeeee"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Polar Night",
+  "tags": [
+    "winter",
+    "night",
+    "dark",
+    "cool",
+    "moody",
+    "serene"
+  ],
+  "colors": [
+    "#07111f",
+    "#122a44",
+    "#1f4a6b",
+    "#3f7a9a",
+    "#cfe3ec"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

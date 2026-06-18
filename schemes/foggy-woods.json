@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Foggy Woods",
+  "tags": [
+    "forest",
+    "fog",
+    "muted",
+    "calm",
+    "cool",
+    "moody",
+    "minimal"
+  ],
+  "colors": [
+    "#20272a",
+    "#3e4c4a",
+    "#66746e",
+    "#97a39a",
+    "#d6dcd2"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

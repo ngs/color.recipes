@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "Rainy Avenue",
+  "tags": [
+    "city",
+    "rain",
+    "night",
+    "urban",
+    "cool",
+    "moody",
+    "muted"
+  ],
+  "colors": [
+    "#14181d",
+    "#2c343d",
+    "#4f5d68",
+    "#7d909b",
+    "#c8d4d9",
+    "#e85d6b"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

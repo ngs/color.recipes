@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Blue Hour",
+  "tags": [
+    "twilight",
+    "city",
+    "dusk",
+    "cool",
+    "moody",
+    "gradient",
+    "urban"
+  ],
+  "colors": [
+    "#161a33",
+    "#2e2f55",
+    "#5a4a7a",
+    "#9a6f8a",
+    "#e3a07a"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

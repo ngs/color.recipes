@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "color-recipes",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    // Static-asset matches are served first; non-matching requests (e.g. /api/*)
+    // fall through to the Worker. The Worker uses this binding for SPA fallback.
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Production route. The zone color.recipes is managed via Terraform in the
+  // separate repo ngs/littleapps-cloudflare-terraform (SPEC §5, §8).
+  "routes": [
+    { "pattern": "color.recipes/*", "zone_name": "color.recipes" }
+  ],
+  // Public, non-secret config. Secrets (GITHUB_CLIENT_SECRET, COOKIE_SECRET) are
+  // set via `wrangler secret put` / Terraform, and locally via .dev.vars.
+  "vars": {
+    "UPSTREAM_REPO": "ngs/color.recipes"
+  }
+}

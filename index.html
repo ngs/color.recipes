@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>color.recipes</title>
+    <meta
+      name="description"
+      content="A searchable, curated color-scheme gallery with AI-assisted PR contributions."
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#">color.recipes</a>
+      <form id="search" class="search" autocomplete="off" role="search">
+        <div id="tokens" class="tokens">
+          <!-- selected-tag chips are injected here, before the input -->
+          <input
+            id="search-input"
+            class="token-input"
+            type="text"
+            placeholder="Search by tag — type, pick a suggestion, or press Enter…"
+            aria-label="Search by tag"
+            role="combobox"
+            aria-expanded="false"
+            aria-autocomplete="list"
+            aria-controls="suggest"
+          />
+        </div>
+        <ul id="suggest" class="suggest hidden" role="listbox" aria-label="Tag suggestions"></ul>
+      </form>
+    </header>
+
+    <main id="app" class="app"></main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

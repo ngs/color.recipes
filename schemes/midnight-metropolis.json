@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Midnight Metropolis",
+  "tags": [
+    "city",
+    "night",
+    "urban",
+    "dark",
+    "neon",
+    "vibrant",
+    "moody"
+  ],
+  "colors": [
+    "#0b0f1e",
+    "#1b2a4a",
+    "#2bd2c4",
+    "#c84bd1",
+    "#f4e04d"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "First Snow Downtown",
+  "tags": [
+    "city",
+    "snow",
+    "winter",
+    "urban",
+    "muted",
+    "cool",
+    "cozy"
+  ],
+  "colors": [
+    "#1b1f26",
+    "#353d4a",
+    "#64708a",
+    "#aab4c2",
+    "#e9eef3",
+    "#e6a85c"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

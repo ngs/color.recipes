@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.wrangler/
+
+# Build artifact: generated from schemes/*.json by scripts/build-index.ts
+public/index.json
+
+# Worker local secrets (never commit)
+.dev.vars
+
+*.log
+.DS_Store

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Retro District",
+  "tags": [
+    "city",
+    "retro",
+    "vintage",
+    "urban",
+    "warm",
+    "bold"
+  ],
+  "colors": [
+    "#2b2233",
+    "#6e3b54",
+    "#c75d4f",
+    "#e8a14b",
+    "#efe0bf"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

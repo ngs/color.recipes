@@ -1,0 +1,25 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+# build-index -> vite build (client + worker) -> deploy to Cloudflare (SPEC §5).
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Worker secrets (GITHUB_CLIENT_SECRET, COOKIE_SECRET, GITHUB_CLIENT_ID)
+          # are managed via `wrangler secret put` / Terraform, not here.

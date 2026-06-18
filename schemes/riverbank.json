@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Riverbank",
+  "tags": [
+    "river",
+    "summer",
+    "green",
+    "fresh",
+    "calm",
+    "natural"
+  ],
+  "colors": [
+    "#1c2a1a",
+    "#3f5b2e",
+    "#6f8f4a",
+    "#b9c98a",
+    "#f1ead0"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

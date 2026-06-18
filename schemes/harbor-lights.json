@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Harbor Lights",
+  "tags": [
+    "harbor",
+    "dusk",
+    "city",
+    "cool",
+    "moody",
+    "warm"
+  ],
+  "colors": [
+    "#101a26",
+    "#21384a",
+    "#3a5a6e",
+    "#6f8a96",
+    "#f0b86a"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

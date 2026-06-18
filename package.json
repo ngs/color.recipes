@@ -1,0 +1,28 @@
+{
+  "name": "color-recipes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A searchable, curated color-scheme gallery with AI-assisted PR contributions.",
+  "scripts": {
+    "build:index": "tsx scripts/build-index.ts",
+    "dev": "npm run build:index && vite dev",
+    "build": "npm run build:index && vite build",
+    "preview": "npm run build && vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "validate": "tsx scripts/validate-schemes.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
+    "test:ui": "npm run build && tsx scripts/ui-check.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.41.0",
+    "@cloudflare/workers-types": "^4.20260617.1",
+    "@types/node": "^25.9.3",
+    "ajv": "^8.20.0",
+    "playwright": "^1.61.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "wrangler": "^4.101.0"
+  }
+}

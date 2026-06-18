@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Neon Alley",
+  "tags": [
+    "city",
+    "night",
+    "neon",
+    "urban",
+    "vibrant",
+    "bold",
+    "purple"
+  ],
+  "colors": [
+    "#0a0a14",
+    "#1a1030",
+    "#4a1f6e",
+    "#b13ad1",
+    "#ff5fa2"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

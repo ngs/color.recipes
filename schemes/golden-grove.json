@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Golden Grove",
+  "tags": [
+    "forest",
+    "autumn",
+    "warm",
+    "earthy",
+    "golden",
+    "cozy"
+  ],
+  "colors": [
+    "#1a1408",
+    "#3e2f12",
+    "#7a5e1f",
+    "#b89a3a",
+    "#e6d28a"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Storm Sea",
+  "tags": [
+    "ocean",
+    "storm",
+    "dark",
+    "moody",
+    "cool",
+    "dramatic"
+  ],
+  "colors": [
+    "#0c1416",
+    "#1d3035",
+    "#36565a",
+    "#6c8a8c",
+    "#c2d2cf"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}

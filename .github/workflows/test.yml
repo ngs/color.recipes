@@ -1,0 +1,23 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # Headless UI test (scripts/ui-check.ts via Playwright). The script prefers the
+      # system Google Chrome and falls back to Playwright's Chromium, so install it
+      # (plus OS deps) for the runner.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
