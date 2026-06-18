@@ -12,10 +12,12 @@
   "observability": {
     "enabled": true
   },
-  // Production route. The zone color.recipes is managed via Terraform in the
-  // separate repo ngs/littleapps-cloudflare-terraform (SPEC §5, §8).
+  // Production custom domain: wrangler creates/manages the Workers custom domain
+  // and its DNS on deploy, so the app owns its routing. The zone itself is created
+  // by Terraform in ngs/littleapps-cloudflare-terraform (SPEC §5, §8), so the zone
+  // must exist before the first deploy.
   "routes": [
-    { "pattern": "color.recipes/*", "zone_name": "color.recipes" }
+    { "pattern": "color.recipes", "custom_domain": true }
   ],
   // Public, non-secret config. Secrets (GITHUB_CLIENT_SECRET, COOKIE_SECRET) are
   // set via `wrangler secret put` / Terraform, and locally via .dev.vars.
