@@ -65,7 +65,9 @@ async function authLogin(request: Request, env: Env, url: URL): Promise<Response
   const authorize = new URL("https://github.com/login/oauth/authorize");
   authorize.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
   authorize.searchParams.set("redirect_uri", redirectUri);
-  authorize.searchParams.set("scope", "public_repo");
+  // public_repo: fork + commit + PR. read:org: list the orgs the user can fork into
+  // and read each org's repo-creation policy (for the owner picker).
+  authorize.searchParams.set("scope", "public_repo read:org");
   authorize.searchParams.set("state", state);
   authorize.searchParams.set("allow_signup", "true");
 
@@ -144,16 +146,47 @@ async function forkOwners(request: Request, env: Env): Promise<Response> {
   if (!meRes.ok) return json({ error: "not authenticated" }, 401);
   const me = (await meRes.json()) as { login: string; avatar_url: string };
 
-  const orgsRes = await gh(token, "GET", "/user/orgs?per_page=100");
-  const orgs = orgsRes.ok ? ((await orgsRes.json()) as Array<{ login: string; avatar_url: string }>) : [];
+  const owners: Array<{ login: string; type: string; avatarUrl: string; canCreate: boolean }> = [
+    { login: me.login, type: "User", avatarUrl: me.avatar_url, canCreate: true },
+  ];
 
-  return json({
-    login: me.login,
-    owners: [
-      { login: me.login, type: "User", avatarUrl: me.avatar_url },
-      ...orgs.map((o) => ({ login: o.login, type: "Organization", avatarUrl: o.avatar_url })),
-    ],
-  });
+  // Orgs the user belongs to, with their role (needs read:org for full coverage).
+  const memRes = await gh(token, "GET", "/user/memberships/orgs?state=active&per_page=100");
+  if (memRes.ok) {
+    const memberships = (await memRes.json()) as Array<{
+      role: string;
+      organization: { login: string; avatar_url: string };
+    }>;
+    const orgOwners = await Promise.all(
+      memberships.map(async (m) => {
+        // Admins can always create; for members, a fork of a public repo is public,
+        // so the org's public-repo creation policy decides.
+        let canCreate = m.role === "admin";
+        if (!canCreate) {
+          const orgRes = await gh(token, "GET", `/orgs/${m.organization.login}`);
+          if (orgRes.ok) {
+            const org = (await orgRes.json()) as {
+              members_can_create_public_repositories?: boolean;
+              members_can_create_repositories?: boolean;
+            };
+            canCreate =
+              org.members_can_create_public_repositories ?? org.members_can_create_repositories ?? true;
+          } else {
+            canCreate = true; // policy not readable — stay optimistic
+          }
+        }
+        return {
+          login: m.organization.login,
+          type: "Organization",
+          avatarUrl: m.organization.avatar_url,
+          canCreate,
+        };
+      }),
+    );
+    owners.push(...orgOwners);
+  }
+
+  return json({ login: me.login, owners });
 }
 
 // GET /api/fork/check?owner=<owner>&name=<name> — is <owner>/<name> usable as a fork

@@ -201,6 +201,7 @@ interface ForkOwner {
   login: string;
   type: string;
   avatarUrl: string;
+  canCreate?: boolean;
 }
 
 async function fetchOwners(): Promise<{ login: string; owners: ForkOwner[] }> {
@@ -228,9 +229,11 @@ function chooseForkTarget(
 
     const select = el("select", { className: "fork-owner" });
     for (const o of owners) {
-      select.append(
-        el("option", { value: o.login, textContent: o.login === login ? `${o.login} (you)` : o.login }),
-      );
+      const suffix =
+        o.login === login ? " (you)" : o.canCreate === false ? " (insufficient permission)" : "";
+      const option = el("option", { value: o.login, textContent: `${o.login}${suffix}` });
+      if (o.canCreate === false) option.disabled = true;
+      select.append(option);
     }
     const nameInput = el("input", { type: "text", className: "fork-input", value: DEFAULT_FORK });
     const status = el("div", { className: "fork-status" });
