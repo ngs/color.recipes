@@ -23,6 +23,17 @@ const UA = "color.recipes-worker";
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // Force HTTPS. Workers Custom Domains bypass the zone's Always Use HTTPS /
+    // page rules, so the redirect must happen here. `CF-Visitor` carries the
+    // client's scheme and is only set by the Cloudflare edge, so local dev
+    // (http://localhost) is unaffected. Requires assets.run_worker_first so the
+    // Worker runs before static assets are served.
+    if (request.headers.get("CF-Visitor")?.includes('"scheme":"http"')) {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
+
     const { pathname } = url;
 
     try {

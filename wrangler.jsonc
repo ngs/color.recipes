@@ -4,10 +4,12 @@
   "main": "worker/index.ts",
   "compatibility_date": "2025-06-01",
   "assets": {
-    // Static-asset matches are served first; non-matching requests (e.g. /api/*)
-    // fall through to the Worker. The Worker uses this binding for SPA fallback.
+    // run_worker_first: the Worker runs before static assets so it can force
+    // HTTPS (Custom Domains bypass the zone's Always Use HTTPS). The Worker serves
+    // everything non-/api via this binding (SPA fallback).
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
   },
   "observability": {
     "enabled": true
