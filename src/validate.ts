@@ -119,6 +119,26 @@ export function validateScheme(input: unknown): Result<Scheme> {
   return { ok: true, value: input as unknown as Scheme };
 }
 
+// GitHub repository name rules: letters, digits, '-', '_', '.', max 100 chars,
+// and not "." or "..". Used when forking under a user-chosen name.
+export const REPO_NAME_RE = /^[A-Za-z0-9._-]+$/;
+export const REPO_NAME_MAX = 100;
+
+export function validateRepoName(input: unknown): Result<string> {
+  if (typeof input !== "string") return { ok: false, errors: ["repository name must be a string"] };
+  const name = input.trim();
+  const errors: string[] = [];
+  if (!name) {
+    errors.push("repository name is required");
+  } else {
+    if (name.length > REPO_NAME_MAX) errors.push(`repository name must be at most ${REPO_NAME_MAX} characters`);
+    if (name === "." || name === "..") errors.push('repository name cannot be "." or ".."');
+    if (!REPO_NAME_RE.test(name)) errors.push("only letters, digits, '-', '_' and '.' are allowed");
+  }
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, value: name };
+}
+
 /** Filename-safe slug derived from a scheme name (SPEC §6). */
 export function slugify(name: string): string {
   const slug = name

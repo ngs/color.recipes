@@ -1,7 +1,7 @@
 // Zero-match contribution flow (SPEC §1, §7): generate/copy the AI prompt -> paste
 // the returned JSON -> normalize + preview -> GitHub login -> fork + PR via the Worker.
 
-import { validateAiInput, validateScheme, slugify, type Scheme } from "./validate.ts";
+import { validateAiInput, validateScheme, validateRepoName, slugify, type Scheme } from "./validate.ts";
 import { FORMATTERS, readableText } from "./color.ts";
 
 const DEFAULT_COUNT = 5;
@@ -166,7 +166,9 @@ export function mountContribution(app: HTMLElement, tags: string[]): void {
     if (current || textarea.value.trim()) renderPreview();
   });
 
-  submitBtn.addEventListener("click", () => void submit(current, showNotice, submitBtn));
+  const forkMount = el("div", { className: "fork-prompt hidden" });
+
+  submitBtn.addEventListener("click", () => void submit(current, showNotice, submitBtn, forkMount));
 
   panel.append(
     el(
@@ -177,20 +179,102 @@ export function mountContribution(app: HTMLElement, tags: string[]): void {
       el("div", { className: "row" }, previewBtn, submitBtn),
       swatches,
       notice,
+      forkMount,
     ),
   );
 
   app.replaceChildren(panel);
 }
 
+const DEFAULT_FORK = "color.recipes"; // upstream repo name; the usual fork name
+
+interface ForkCheck {
+  valid: boolean;
+  exists?: boolean;
+  available?: boolean;
+  isOurFork?: boolean;
+  errors?: string[];
+}
+
+async function checkForkName(name: string): Promise<ForkCheck> {
+  const res = await fetch(`/api/fork/check?name=${encodeURIComponent(name)}`);
+  return (await res.json().catch(() => ({ valid: false, errors: ["check failed"] }))) as ForkCheck;
+}
+
+/** Decide the fork name. Reuse the default unless the user already has an unrelated
+ *  repo by that name, in which case prompt for an available, valid one. */
+async function resolveForkName(forkMount: HTMLElement): Promise<string | null> {
+  const first = await checkForkName(DEFAULT_FORK);
+  if (first.valid && (first.available || first.isOurFork)) return DEFAULT_FORK;
+  return promptForkName(forkMount, `${DEFAULT_FORK}-fork`);
+}
+
+function promptForkName(mount: HTMLElement, suggestion: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    mount.classList.remove("hidden");
+    const input = el("input", { type: "text", className: "fork-input", value: suggestion });
+    const status = el("div", { className: "fork-status" });
+    const useBtn = el("button", { className: "btn btn-primary", textContent: "Use this name" });
+    const cancelBtn = el("button", { className: "btn", textContent: "Cancel" });
+
+    const cleanup = () => {
+      mount.replaceChildren();
+      mount.classList.add("hidden");
+    };
+
+    const attempt = async () => {
+      const local = validateRepoName(input.value);
+      if (!local.ok) {
+        status.textContent = local.errors.join("; ");
+        return;
+      }
+      useBtn.disabled = true;
+      status.textContent = "Checking availability…";
+      const r = await checkForkName(local.value);
+      useBtn.disabled = false;
+      if (!r.valid) {
+        status.textContent = (r.errors ?? ["invalid name"]).join("; ");
+        return;
+      }
+      if (r.available || r.isOurFork) {
+        cleanup();
+        resolve(local.value);
+        return;
+      }
+      status.textContent = `“${local.value}” already exists — choose another name.`;
+    };
+
+    useBtn.addEventListener("click", () => void attempt());
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void attempt();
+      }
+    });
+    cancelBtn.addEventListener("click", () => {
+      cleanup();
+      resolve(null);
+    });
+
+    mount.append(
+      el("label", {}, "You already have a repository named “color.recipes”. Choose a name for the fork:"),
+      input,
+      el("div", { className: "row" }, useBtn, cancelBtn),
+      status,
+    );
+    input.focus();
+    input.select();
+  });
+}
+
 async function submit(
   scheme: Scheme | undefined,
   showNotice: (kind: "ok" | "error", html: string) => void,
   submitBtn: HTMLButtonElement,
+  forkMount: HTMLElement,
 ): Promise<void> {
   if (!scheme) return;
   submitBtn.disabled = true;
-  submitBtn.textContent = "Submitting…";
 
   try {
     // Ensure we are logged in (httpOnly cookie; SPEC §8). If not, send to OAuth.
@@ -201,10 +285,19 @@ async function submit(
       return;
     }
 
+    // Pick the fork name (prompts on a name collision with an unrelated repo).
+    const forkName = await resolveForkName(forkMount);
+    if (forkName === null) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Log in & open PR";
+      return;
+    }
+
+    submitBtn.textContent = "Submitting…";
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(scheme),
+      body: JSON.stringify({ scheme, forkName }),
     });
     const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
     if (!res.ok) {

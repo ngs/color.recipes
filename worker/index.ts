@@ -4,7 +4,7 @@
 // non-matching requests land here. `/api/*` is handled below, everything else falls
 // back to the ASSETS binding (SPA).
 
-import { validateScheme, slugify } from "../src/validate.ts";
+import { validateScheme, validateRepoName, slugify } from "../src/validate.ts";
 
 export interface Env {
   ASSETS: Fetcher;
@@ -41,6 +41,7 @@ export default {
       if (pathname === "/api/auth/callback") return authCallback(request, env, url);
       if (pathname === "/api/auth/me") return authMe(request, env);
       if (pathname === "/api/auth/logout") return authLogout(request);
+      if (pathname === "/api/fork/check") return forkCheck(request, env, url);
       if (pathname === "/api/submit") return submit(request, env);
       if (pathname.startsWith("/api/")) return json({ error: "not found" }, 404);
     } catch (e) {
@@ -126,18 +127,46 @@ function authLogout(_request: Request): Response {
 
 // ---------------------------------------------------------------- submit
 
+interface SubmitBody {
+  scheme?: unknown;
+  forkName?: unknown;
+}
+
+// GET /api/fork/check?name=<name> — is <login>/<name> available as a fork target?
+// Returns { valid, exists, available, isOurFork } so the client can pick a name.
+async function forkCheck(request: Request, env: Env, url: URL): Promise<Response> {
+  const token = await currentToken(request, env);
+  if (!token) return json({ error: "not authenticated" }, 401);
+
+  const nameResult = validateRepoName(url.searchParams.get("name") ?? "");
+  if (!nameResult.ok) return json({ valid: false, errors: nameResult.errors }, 400);
+  const name = nameResult.value;
+
+  const meRes = await gh(token, "GET", "/user");
+  if (!meRes.ok) return json({ error: "not authenticated" }, 401);
+  const me = (await meRes.json()) as { login: string };
+
+  const repoRes = await gh(token, "GET", `/repos/${me.login}/${name}`);
+  if (repoRes.status === 404) return json({ valid: true, exists: false, available: true });
+  if (!repoRes.ok) return json({ error: `could not check repository (${repoRes.status})` }, 502);
+  const repo = (await repoRes.json()) as { fork?: boolean; parent?: { full_name?: string } };
+  const isOurFork =
+    !!repo.fork && repo.parent?.full_name?.toLowerCase() === env.UPSTREAM_REPO.toLowerCase();
+  return json({ valid: true, exists: true, available: false, isOurFork });
+}
+
 async function submit(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
   const token = await currentToken(request, env);
   if (!token) return json({ error: "not authenticated" }, 401);
 
-  let body: unknown;
+  let body: SubmitBody;
   try {
-    body = await request.json();
+    body = (await request.json()) as SubmitBody;
   } catch {
     return json({ error: "invalid JSON body" }, 400);
   }
-  const result = validateScheme(body);
+  const result = validateScheme(body.scheme);
   if (!result.ok) return json({ error: result.errors.join("; ") }, 400);
   const scheme = result.value;
 
@@ -151,28 +180,48 @@ async function submit(request: Request, env: Env): Promise<Response> {
   if (!meRes.ok) return json({ error: "could not read GitHub user" }, 502);
   const me = (await meRes.json()) as { login: string };
 
-  // 2. Ensure a fork exists (idempotent; returns the existing fork if present).
-  await gh(token, "POST", `/repos/${upstreamOwner}/${upstreamRepo}/forks`);
-
-  // 3. Upstream default branch.
+  // 2. Upstream default branch.
   const upstreamRes = await gh(token, "GET", `/repos/${upstreamOwner}/${upstreamRepo}`);
   const upstream = (await upstreamRes.json()) as { default_branch: string };
   const baseBranch = upstream.default_branch;
 
+  // 3. Resolve where the branch lives: the upstream itself if the contributor owns
+  //    it (you cannot fork your own repo), otherwise a fork. The fork name comes
+  //    from the client (it has already checked availability); we read the actual
+  //    owner/name back from the API so a name collision never targets the wrong repo.
+  let forkOwner = upstreamOwner;
+  let forkRepo = upstreamRepo;
+  if (me.login !== upstreamOwner) {
+    let forkName = upstreamRepo;
+    if (body.forkName != null) {
+      const nameResult = validateRepoName(body.forkName);
+      if (!nameResult.ok) return json({ error: nameResult.errors.join("; ") }, 400);
+      forkName = nameResult.value;
+    }
+    const forkRes = await gh(token, "POST", `/repos/${upstreamOwner}/${upstreamRepo}/forks`, {
+      name: forkName,
+      default_branch_only: true,
+    });
+    if (!forkRes.ok) return json({ error: await ghError(forkRes, "create fork") }, 502);
+    const fork = (await forkRes.json()) as { name: string; owner: { login: string } };
+    forkOwner = fork.owner.login;
+    forkRepo = fork.name;
+  }
+
   // 4. Base SHA from the fork (retry: a freshly created fork may not be ready yet).
-  const baseSha = await forkBaseSha(token, me.login, upstreamRepo, baseBranch);
+  const baseSha = await forkBaseSha(token, forkOwner, forkRepo, baseBranch);
   if (!baseSha) return json({ error: "fork not ready yet — please retry in a moment" }, 503);
 
-  // 5. New branch on the fork.
+  // 5. New branch.
   const branch = `add-${slug}-${Date.now().toString(36)}`;
-  const refRes = await gh(token, "POST", `/repos/${me.login}/${upstreamRepo}/git/refs`, {
+  const refRes = await gh(token, "POST", `/repos/${forkOwner}/${forkRepo}/git/refs`, {
     ref: `refs/heads/${branch}`,
     sha: baseSha,
   });
   if (!refRes.ok) return json({ error: await ghError(refRes, "create branch") }, 502);
 
-  // 6. Commit the scheme file to the fork branch.
-  const putRes = await gh(token, "PUT", `/repos/${me.login}/${upstreamRepo}/contents/${path}`, {
+  // 6. Commit the scheme file to the branch.
+  const putRes = await gh(token, "PUT", `/repos/${forkOwner}/${forkRepo}/contents/${path}`, {
     message: `Add scheme: ${scheme.name}`,
     content: toBase64(content),
     branch,
@@ -182,7 +231,7 @@ async function submit(request: Request, env: Env): Promise<Response> {
   // 7. Open the PR against upstream.
   const prRes = await gh(token, "POST", `/repos/${upstreamOwner}/${upstreamRepo}/pulls`, {
     title: `Add scheme: ${scheme.name}`,
-    head: `${me.login}:${branch}`,
+    head: `${forkOwner}:${branch}`,
     base: baseBranch,
     body: `Adds \`${path}\` via color.recipes.\n\nTags: ${scheme.tags.join(", ")}`,
     maintainer_can_modify: true,
