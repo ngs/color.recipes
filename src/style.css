@@ -545,9 +545,36 @@ textarea {
   background: #11141b;
 }
 
-.fork-input {
-  width: 100%;
+.fork-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 8px;
+}
+
+.fork-slash {
+  color: var(--muted);
+}
+
+.fork-owner {
+  flex: 0 1 auto;
+  max-width: 45%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #161922;
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.fork-owner:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.fork-input {
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 9px 12px;
   border-radius: 8px;
   border: 1px solid var(--line);

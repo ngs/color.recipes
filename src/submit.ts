@@ -186,70 +186,108 @@ export function mountContribution(app: HTMLElement, tags: string[]): void {
   app.replaceChildren(panel);
 }
 
-const DEFAULT_FORK = "color.recipes"; // upstream repo name; the usual fork name
+const DEFAULT_FORK = "color.recipes"; // upstream repo name; the default fork name
 
 interface ForkCheck {
   valid: boolean;
   exists?: boolean;
   available?: boolean;
   isOurFork?: boolean;
+  isUpstream?: boolean;
   errors?: string[];
 }
 
-async function checkForkName(name: string): Promise<ForkCheck> {
-  const res = await fetch(`/api/fork/check?name=${encodeURIComponent(name)}`);
+interface ForkOwner {
+  login: string;
+  type: string;
+  avatarUrl: string;
+}
+
+async function fetchOwners(): Promise<{ login: string; owners: ForkOwner[] }> {
+  const res = await fetch("/api/fork/owners");
+  if (!res.ok) throw new Error("could not list fork owners");
+  return (await res.json()) as { login: string; owners: ForkOwner[] };
+}
+
+async function checkForkTarget(owner: string, name: string): Promise<ForkCheck> {
+  const res = await fetch(
+    `/api/fork/check?owner=${encodeURIComponent(owner)}&name=${encodeURIComponent(name)}`,
+  );
   return (await res.json().catch(() => ({ valid: false, errors: ["check failed"] }))) as ForkCheck;
 }
 
-/** Decide the fork name. Reuse the default unless the user already has an unrelated
- *  repo by that name, in which case prompt for an available, valid one. */
-async function resolveForkName(forkMount: HTMLElement): Promise<string | null> {
-  const first = await checkForkName(DEFAULT_FORK);
-  if (first.valid && (first.available || first.isOurFork)) return DEFAULT_FORK;
-  return promptForkName(forkMount, `${DEFAULT_FORK}-fork`);
-}
-
-function promptForkName(mount: HTMLElement, suggestion: string): Promise<string | null> {
+/** GitHub-style "create a new fork" picker: choose owner (you or an org) + name,
+ *  with live availability/reuse status. Resolves the chosen target, or null on cancel. */
+function chooseForkTarget(
+  mount: HTMLElement,
+  login: string,
+  owners: ForkOwner[],
+): Promise<{ owner: string; name: string } | null> {
   return new Promise((resolve) => {
     mount.classList.remove("hidden");
-    const input = el("input", { type: "text", className: "fork-input", value: suggestion });
+
+    const select = el("select", { className: "fork-owner" });
+    for (const o of owners) {
+      select.append(
+        el("option", { value: o.login, textContent: o.login === login ? `${o.login} (you)` : o.login }),
+      );
+    }
+    const nameInput = el("input", { type: "text", className: "fork-input", value: DEFAULT_FORK });
     const status = el("div", { className: "fork-status" });
-    const useBtn = el("button", { className: "btn btn-primary", textContent: "Use this name" });
+    const okBtn = el("button", { className: "btn btn-primary", textContent: "Create fork & open PR" });
     const cancelBtn = el("button", { className: "btn", textContent: "Cancel" });
+    okBtn.disabled = true;
 
     const cleanup = () => {
       mount.replaceChildren();
       mount.classList.add("hidden");
     };
 
-    const attempt = async () => {
-      const local = validateRepoName(input.value);
+    let seq = 0;
+    const recheck = async () => {
+      const mine = ++seq;
+      const local = validateRepoName(nameInput.value);
       if (!local.ok) {
         status.textContent = local.errors.join("; ");
+        okBtn.disabled = true;
         return;
       }
-      useBtn.disabled = true;
+      const owner = select.value;
       status.textContent = "Checking availability…";
-      const r = await checkForkName(local.value);
-      useBtn.disabled = false;
+      okBtn.disabled = true;
+      const r = await checkForkTarget(owner, local.value);
+      if (mine !== seq) return; // superseded by a newer check
+      const target = `${owner}/${local.value}`;
       if (!r.valid) {
         status.textContent = (r.errors ?? ["invalid name"]).join("; ");
-        return;
+        okBtn.disabled = true;
+      } else if (r.available) {
+        status.textContent = `Will create ${target}`;
+        okBtn.textContent = "Create fork & open PR";
+        okBtn.disabled = false;
+      } else if (r.isOurFork || r.isUpstream) {
+        status.textContent = `Will reuse ${target}`;
+        okBtn.textContent = "Open PR";
+        okBtn.disabled = false;
+      } else {
+        status.textContent = `${target} already exists — choose another name or owner`;
+        okBtn.disabled = true;
       }
-      if (r.available || r.isOurFork) {
-        cleanup();
-        resolve(local.value);
-        return;
-      }
-      status.textContent = `“${local.value}” already exists — choose another name.`;
     };
 
-    useBtn.addEventListener("click", () => void attempt());
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        void attempt();
-      }
+    let timer: number | undefined;
+    const debouncedRecheck = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = window.setTimeout(() => void recheck(), 250);
+    };
+
+    select.addEventListener("change", () => void recheck());
+    nameInput.addEventListener("input", debouncedRecheck);
+    okBtn.addEventListener("click", () => {
+      const local = validateRepoName(nameInput.value);
+      if (!local.ok) return;
+      cleanup();
+      resolve({ owner: select.value, name: local.value });
     });
     cancelBtn.addEventListener("click", () => {
       cleanup();
@@ -257,13 +295,12 @@ function promptForkName(mount: HTMLElement, suggestion: string): Promise<string 
     });
 
     mount.append(
-      el("label", {}, "You already have a repository named “color.recipes”. Choose a name for the fork:"),
-      input,
-      el("div", { className: "row" }, useBtn, cancelBtn),
+      el("label", {}, "Fork destination — choose an account or organization"),
+      el("div", { className: "fork-row" }, select, el("span", { className: "fork-slash" }, "/"), nameInput),
+      el("div", { className: "row" }, okBtn, cancelBtn),
       status,
     );
-    input.focus();
-    input.select();
+    void recheck();
   });
 }
 
@@ -285,9 +322,10 @@ async function submit(
       return;
     }
 
-    // Pick the fork name (prompts on a name collision with an unrelated repo).
-    const forkName = await resolveForkName(forkMount);
-    if (forkName === null) {
+    // Let the user pick the fork destination (their account or an org they can use).
+    const { login, owners } = await fetchOwners();
+    const target = await chooseForkTarget(forkMount, login, owners);
+    if (target === null) {
       submitBtn.disabled = false;
       submitBtn.textContent = "Log in & open PR";
       return;
@@ -297,7 +335,7 @@ async function submit(
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheme, forkName }),
+      body: JSON.stringify({ scheme, forkOwner: target.owner, forkName: target.name }),
     });
     const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
     if (!res.ok) {

@@ -41,6 +41,7 @@ export default {
       if (pathname === "/api/auth/callback") return authCallback(request, env, url);
       if (pathname === "/api/auth/me") return authMe(request, env);
       if (pathname === "/api/auth/logout") return authLogout(request);
+      if (pathname === "/api/fork/owners") return forkOwners(request, env);
       if (pathname === "/api/fork/check") return forkCheck(request, env, url);
       if (pathname === "/api/submit") return submit(request, env);
       if (pathname.startsWith("/api/")) return json({ error: "not found" }, 404);
@@ -130,10 +131,34 @@ function authLogout(_request: Request): Response {
 interface SubmitBody {
   scheme?: unknown;
   forkName?: unknown;
+  forkOwner?: unknown;
 }
 
-// GET /api/fork/check?name=<name> — is <login>/<name> available as a fork target?
-// Returns { valid, exists, available, isOurFork } so the client can pick a name.
+// GET /api/fork/owners — accounts the contributor can fork into: themselves plus
+// the organizations they belong to (mirrors GitHub's "Create a new fork" owner list).
+async function forkOwners(request: Request, env: Env): Promise<Response> {
+  const token = await currentToken(request, env);
+  if (!token) return json({ error: "not authenticated" }, 401);
+
+  const meRes = await gh(token, "GET", "/user");
+  if (!meRes.ok) return json({ error: "not authenticated" }, 401);
+  const me = (await meRes.json()) as { login: string; avatar_url: string };
+
+  const orgsRes = await gh(token, "GET", "/user/orgs?per_page=100");
+  const orgs = orgsRes.ok ? ((await orgsRes.json()) as Array<{ login: string; avatar_url: string }>) : [];
+
+  return json({
+    login: me.login,
+    owners: [
+      { login: me.login, type: "User", avatarUrl: me.avatar_url },
+      ...orgs.map((o) => ({ login: o.login, type: "Organization", avatarUrl: o.avatar_url })),
+    ],
+  });
+}
+
+// GET /api/fork/check?owner=<owner>&name=<name> — is <owner>/<name> usable as a fork
+// target? Returns { valid, exists, available, isOurFork, isUpstream } (owner defaults
+// to the logged-in user). isUpstream/isOurFork mean it can be reused as-is.
 async function forkCheck(request: Request, env: Env, url: URL): Promise<Response> {
   const token = await currentToken(request, env);
   if (!token) return json({ error: "not authenticated" }, 401);
@@ -145,14 +170,18 @@ async function forkCheck(request: Request, env: Env, url: URL): Promise<Response
   const meRes = await gh(token, "GET", "/user");
   if (!meRes.ok) return json({ error: "not authenticated" }, 401);
   const me = (await meRes.json()) as { login: string };
+  const owner = url.searchParams.get("owner") || me.login;
 
-  const repoRes = await gh(token, "GET", `/repos/${me.login}/${name}`);
-  if (repoRes.status === 404) return json({ valid: true, exists: false, available: true });
+  const repoRes = await gh(token, "GET", `/repos/${owner}/${name}`);
+  if (repoRes.status === 404) {
+    return json({ valid: true, exists: false, available: true, isOurFork: false, isUpstream: false });
+  }
   if (!repoRes.ok) return json({ error: `could not check repository (${repoRes.status})` }, 502);
   const repo = (await repoRes.json()) as { fork?: boolean; parent?: { full_name?: string } };
-  const isOurFork =
-    !!repo.fork && repo.parent?.full_name?.toLowerCase() === env.UPSTREAM_REPO.toLowerCase();
-  return json({ valid: true, exists: true, available: false, isOurFork });
+  const upstream = env.UPSTREAM_REPO.toLowerCase();
+  const isUpstream = `${owner}/${name}`.toLowerCase() === upstream;
+  const isOurFork = !!repo.fork && repo.parent?.full_name?.toLowerCase() === upstream;
+  return json({ valid: true, exists: true, available: false, isOurFork, isUpstream });
 }
 
 async function submit(request: Request, env: Env): Promise<Response> {
@@ -185,23 +214,28 @@ async function submit(request: Request, env: Env): Promise<Response> {
   const upstream = (await upstreamRes.json()) as { default_branch: string };
   const baseBranch = upstream.default_branch;
 
-  // 3. Resolve where the branch lives: the upstream itself if the contributor owns
-  //    it (you cannot fork your own repo), otherwise a fork. The fork name comes
-  //    from the client (it has already checked availability); we read the actual
-  //    owner/name back from the API so a name collision never targets the wrong repo.
+  // 3. Resolve where the branch lives. The contributor chooses the target owner
+  //    (themselves or an org) and name. The upstream repo itself can't be forked,
+  //    so when the target IS the upstream we commit a branch there directly; for an
+  //    org target we fork into the org; otherwise a personal fork. We read the
+  //    actual owner/name back from the API so a collision never hits the wrong repo.
+  let forkName = upstreamRepo;
+  if (body.forkName != null) {
+    const nameResult = validateRepoName(body.forkName);
+    if (!nameResult.ok) return json({ error: nameResult.errors.join("; ") }, 400);
+    forkName = nameResult.value;
+  }
+  const targetOwner = typeof body.forkOwner === "string" && body.forkOwner ? body.forkOwner : me.login;
+
   let forkOwner = upstreamOwner;
   let forkRepo = upstreamRepo;
-  if (me.login !== upstreamOwner) {
-    let forkName = upstreamRepo;
-    if (body.forkName != null) {
-      const nameResult = validateRepoName(body.forkName);
-      if (!nameResult.ok) return json({ error: nameResult.errors.join("; ") }, 400);
-      forkName = nameResult.value;
-    }
-    const forkRes = await gh(token, "POST", `/repos/${upstreamOwner}/${upstreamRepo}/forks`, {
-      name: forkName,
-      default_branch_only: true,
-    });
+  const targetIsUpstream =
+    targetOwner.toLowerCase() === upstreamOwner.toLowerCase() &&
+    forkName.toLowerCase() === upstreamRepo.toLowerCase();
+  if (!targetIsUpstream) {
+    const forkBody: Record<string, unknown> = { name: forkName, default_branch_only: true };
+    if (targetOwner.toLowerCase() !== me.login.toLowerCase()) forkBody.organization = targetOwner;
+    const forkRes = await gh(token, "POST", `/repos/${upstreamOwner}/${upstreamRepo}/forks`, forkBody);
     if (!forkRes.ok) return json({ error: await ghError(forkRes, "create fork") }, 502);
     const fork = (await forkRes.json()) as { name: string; owner: { login: string } };
     forkOwner = fork.owner.login;
