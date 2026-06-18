@@ -44,20 +44,25 @@ interface Candidate {
   count: number; // number of currently-matched schemes that also carry this tag
 }
 
-// ---------- URL fragment <-> tag state ----------
-// Format: #1/tag-a,tag-b  (version-prefixed; SPEC §9)
-function parseHash(): string[] {
-  const raw = decodeURIComponent(location.hash.replace(/^#/, ""));
-  if (!raw) return [];
-  const body = raw.startsWith("1/") ? raw.slice(2) : raw;
-  return [...new Set(body.split(/[,+\s]+/).map(normalizeTag).filter(Boolean))];
+// ---------- URL: /<slug>?t=tag-a,tag-b ----------
+// The path is the currently-displayed scheme; ?t is the ANDed tag filter. Manual
+// changes push a history entry; auto-rotation replaces it (no history spam).
+function parseLocation(): { slug: string; tags: string[] } {
+  const slug = decodeURIComponent(location.pathname.replace(/^\/+/, "")).trim();
+  const raw = new URLSearchParams(location.search).get("t") ?? "";
+  const tags = [...new Set(raw.split(/[,+\s]+/).map(normalizeTag).filter(Boolean))];
+  return { slug, tags };
 }
 
-function writeHash(tags: string[]): void {
-  const next = tags.length ? `#1/${tags.join(",")}` : "#";
-  if (location.hash !== next) {
-    history.replaceState(null, "", next);
-  }
+function setUrl(slug: string, tags: string[], push: boolean): void {
+  const path = `/${slug}${tags.length ? `?t=${tags.join(",")}` : ""}`;
+  if (location.pathname + location.search === path) return;
+  if (push) history.pushState(null, "", path);
+  else history.replaceState(null, "", path);
+}
+
+function setTitle(scheme?: IndexedScheme): void {
+  document.title = scheme ? `${scheme.name} — color.recipes` : "color.recipes";
 }
 
 /** Lowercase + reduce to the tag charset (mirrors the scheme tag pattern). */
@@ -134,7 +139,7 @@ function addTag(raw: string): void {
   if (tag && !activeTags.includes(tag)) {
     activeTags = [...activeTags, tag];
     renderTokens();
-    render();
+    render({ push: true });
   }
   searchInput.focus();
   refreshSuggest(); // still focused: show what narrows the new selection
@@ -144,7 +149,7 @@ function removeTag(tag: string): void {
   if (!activeTags.includes(tag)) return;
   activeTags = activeTags.filter((t) => t !== tag);
   renderTokens();
-  render();
+  render({ push: true });
   searchInput.focus();
   refreshSuggest();
 }
@@ -218,14 +223,16 @@ function hideSuggest(): void {
 }
 
 // ---------- top-level state ----------
-function render(): void {
-  writeHash(activeTags);
+function render(opts: { startSlug?: string; push: boolean } = { push: true }): void {
   const matched = matching(activeTags);
   if (matched.length === 0) {
     stopRotation();
+    currentScheme = undefined;
+    setUrl("", activeTags, opts.push);
+    setTitle();
     mountContribution(app, activeTags);
   } else {
-    renderGallery(matched);
+    renderGallery(matched, opts.startSlug, opts.push);
   }
 }
 
@@ -312,9 +319,13 @@ function buildDownload(): HTMLElement {
   return dl;
 }
 
-function renderGallery(schemes: IndexedScheme[]): void {
+function renderGallery(schemes: IndexedScheme[], startSlug: string | undefined, firstPush: boolean): void {
   stopRotation();
   let order = shuffle(schemes);
+  if (startSlug) {
+    const i = order.findIndex((s) => s.slug === startSlug);
+    if (i > 0) order.unshift(order.splice(i, 1)[0]); // start on the requested scheme
+  }
   let pos = 0;
 
   const stage = document.createElement("div");
@@ -331,6 +342,8 @@ function renderGallery(schemes: IndexedScheme[]): void {
   current.classList.add("is-visible");
   stage.append(current);
   applyTheme(order[0]);
+  setUrl(order[0].slug, activeTags, firstPush);
+  setTitle(order[0]);
 
   const metaChip = (tag: string): HTMLElement => {
     const c = document.createElement("button");
@@ -344,8 +357,10 @@ function renderGallery(schemes: IndexedScheme[]): void {
   const counterText = () =>
     `${activeTags.length ? activeTags.join(" + ") + " · " : ""}${order.length} scheme${order.length === 1 ? "" : "s"}`;
 
-  const show = (scheme: IndexedScheme) => {
+  const show = (scheme: IndexedScheme, push: boolean) => {
     applyTheme(scheme);
+    setUrl(scheme.slug, activeTags, push);
+    setTitle(scheme);
     const next = buildLayer(scheme);
     stage.appendChild(next);
     void next.offsetWidth; // force reflow so the opacity transition runs
@@ -373,7 +388,7 @@ function renderGallery(schemes: IndexedScheme[]): void {
   nextBtn.textContent = "Next →";
   nextBtn.addEventListener("click", () => {
     pos = (pos + 1) % order.length;
-    show(order[pos]);
+    show(order[pos], true); // manual -> push
     restartRotation();
   });
   caption.querySelector(".controls")!.append(nextBtn, buildDownload());
@@ -390,7 +405,7 @@ function renderGallery(schemes: IndexedScheme[]): void {
       order = shuffle(order);
       pos = 0;
     }
-    show(order[pos]);
+    show(order[pos], false); // auto-rotate -> replace
   };
 
   const restartRotation = () => {
@@ -413,7 +428,8 @@ async function main(): Promise<void> {
     return;
   }
   index = (await res.json()) as SchemeIndex;
-  activeTags = parseHash();
+  const initial = parseLocation();
+  activeTags = initial.tags;
   renderTokens();
 
   searchForm.addEventListener("submit", (e) => e.preventDefault());
@@ -445,16 +461,15 @@ async function main(): Promise<void> {
     if (e.target === tokens) searchInput.focus();
   });
 
-  window.addEventListener("hashchange", () => {
-    const fromHash = parseHash();
-    if (fromHash.join(",") !== activeTags.join(",")) {
-      activeTags = fromHash;
-      renderTokens();
-      render();
-    }
+  // Back/forward navigation: re-render from the URL (no new history entry).
+  window.addEventListener("popstate", () => {
+    const loc = parseLocation();
+    activeTags = loc.tags;
+    renderTokens();
+    render({ startSlug: loc.slug, push: false });
   });
 
-  render();
+  render({ startSlug: initial.slug, push: false });
 }
 
 main();

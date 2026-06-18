@@ -4,13 +4,13 @@
   "main": "worker/index.ts",
   "compatibility_date": "2025-06-01",
   "assets": {
-    // Run the Worker first only for "/" (to force HTTPS — the app uses hash routing
-    // so every real navigation lands on "/") and for "/api/*" (the API). Everything
-    // else is served assets-first, so the Worker is not invoked for static assets.
-    // Custom Domains bypass the zone's Always Use HTTPS, hence the in-Worker redirect.
+    // The Worker runs first for navigations (to force HTTPS and SSR per-scheme
+    // <title>/description/OG meta) and the API, but NOT for the hashed asset bundles
+    // or generated OG images, which stay assets-first. (Custom Domains bypass the
+    // zone's Always Use HTTPS, so the HTTPS redirect must happen in the Worker.)
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/", "/api/*"]
+    "run_worker_first": ["/*", "!/assets/*", "!/og/*"]
   },
   "observability": {
     "enabled": true

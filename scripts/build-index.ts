@@ -5,12 +5,36 @@
 import { readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PNG } from "pngjs";
 import { validateScheme, slugify } from "../src/validate.ts";
+import { hexToRgb } from "../src/color.ts";
 import type { IndexedScheme, SchemeIndex } from "../src/types.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const schemesDir = join(root, "schemes");
 const outFile = join(root, "public", "index.json");
+const ogDir = join(root, "public", "og");
+
+const OG_WIDTH = 1200;
+const OG_HEIGHT = 630;
+
+// Open Graph image: the palette as vertical bands (no text — the name is in og:title).
+function writeOgImage(scheme: IndexedScheme): void {
+  const png = new PNG({ width: OG_WIDTH, height: OG_HEIGHT });
+  const colors = scheme.colors.map(hexToRgb);
+  const bandWidth = OG_WIDTH / colors.length;
+  for (let x = 0; x < OG_WIDTH; x++) {
+    const { r, g, b } = colors[Math.min(colors.length - 1, Math.floor(x / bandWidth))];
+    for (let y = 0; y < OG_HEIGHT; y++) {
+      const i = (y * OG_WIDTH + x) << 2;
+      png.data[i] = r;
+      png.data[i + 1] = g;
+      png.data[i + 2] = b;
+      png.data[i + 3] = 255;
+    }
+  }
+  writeFileSync(join(ogDir, `${scheme.slug}.png`), PNG.sync.write(png));
+}
 
 function build(): SchemeIndex {
   const files = readdirSync(schemesDir)
@@ -58,6 +82,10 @@ function build(): SchemeIndex {
 const index = build();
 mkdirSync(dirname(outFile), { recursive: true });
 writeFileSync(outFile, JSON.stringify(index) + "\n");
+
+mkdirSync(ogDir, { recursive: true });
+for (const scheme of index.schemes) writeOgImage(scheme);
+
 console.log(
-  `build-index: ${index.schemes.length} scheme(s), ${Object.keys(index.tags).length} tag(s) -> public/index.json`,
+  `build-index: ${index.schemes.length} scheme(s), ${Object.keys(index.tags).length} tag(s) -> public/index.json + ${index.schemes.length} OG image(s)`,
 );

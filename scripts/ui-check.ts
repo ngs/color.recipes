@@ -152,6 +152,10 @@ try {
     "Enter on unknown tag shows the No-matching panel",
     (await page.locator("#app .panel").filter({ hasText: "No matching" }).count()) === 1,
   );
+  check(
+    "zero-match URL is /?t=<tags>",
+    (await page.evaluate(() => location.pathname + location.search)) === "/?t=zzz",
+  );
 
   // 7. a known tag via Enter -> gallery
   await page.locator(".token", { hasText: "zzz" }).locator("button").click();
@@ -165,6 +169,8 @@ try {
     "known-tag chip uses the normal (not unknown) style",
     (await page.locator(".token--unknown", { hasText: "winter" }).count()) === 0,
   );
+  const url7 = await page.evaluate(() => location.pathname + location.search);
+  check("URL reflects scheme slug + tag filter", /^\/[\w.-]+\?t=winter$/.test(url7), `url=${url7}`);
 
   // 8. export menu + downloads (gallery is on screen from step 7)
   await page.locator("#app .dl > .btn").click();
