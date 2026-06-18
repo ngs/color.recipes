@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Reef Parade",
+  "tags": [
+    "tropical",
+    "fish",
+    "coral",
+    "reef",
+    "aqua",
+    "vibrant",
+    "ocean"
+  ],
+  "colors": [
+    "#0b3a4a",
+    "#1fa8a0",
+    "#ffc94d",
+    "#ff6b4a",
+    "#eaf6f2"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}
