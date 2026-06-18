@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Frostbyte Engine",
+  "tags": [
+    "winter",
+    "machine",
+    "frost",
+    "steel",
+    "cyan",
+    "industrial",
+    "cold"
+  ],
+  "colors": [
+    "#11161d",
+    "#2c3a45",
+    "#6b7e8c",
+    "#5fc7d9",
+    "#e6eef2"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-18"
+}
