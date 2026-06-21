@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "Neon Nebula",
+  "tags": [
+    "space",
+    "neon",
+    "cyberpunk",
+    "magenta",
+    "cyan",
+    "cosmic",
+    "glow"
+  ],
+  "colors": [
+    "#0a0612",
+    "#2a1a4a",
+    "#ff2e97",
+    "#2fe6e0",
+    "#e8e4f5"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-21"
+}
