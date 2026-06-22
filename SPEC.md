@@ -23,7 +23,7 @@ Contribution flow (when there are zero matches):
 
 ## 2. Decisions (2026-06-18)
 
-- **No Go.** Plain **TypeScript** frontend.
+- **No Go.** **TypeScript** frontend built with **Preact + @preact/signals** (a deliberately lightweight component layer — ~18 kB gzip total; not React proper, to honor the lightweight constraint).
 - **Auth = OAuth Web flow (authorization code) + a Cloudflare Worker** (not Device Flow). **Public — anyone can log in with GitHub.**
 - **Token handling = option (i)**: the **Worker keeps the token in an httpOnly cookie and proxies fork/commit/PR** (the token never reaches the browser).
 - **Hosting = Cloudflare, single origin**: **one Worker with static assets** (`/api/*` = OAuth + write proxy, everything else = static serving). Same origin enables an **httpOnly / Secure / SameSite=Lax first-party cookie** with no CORS.
@@ -58,10 +58,17 @@ color.recipes/
 ├─ schemes/                    # Curated data. Contribution PRs add one file here.
 │  └─ sunset-retro.json
 ├─ schema/scheme.schema.json   # JSON Schema (canonical; CI validates with ajv)
-├─ src/                        # TS frontend (static)
-│  ├─ main.ts                  # Gallery, rotation/animation, tag search, path routing (/<slug>?t=)
-│  ├─ color.ts                 # hex -> rgb/hsl/oklch, mixing, formatting
-│  ├─ submit.ts                # Prompt copy, JSON paste/preview, fork-owner picker, /api/submit
+├─ src/                        # TS/TSX frontend (Preact + signals, static)
+│  ├─ main.tsx                 # Bootstrap: mount roots, load index, popstate/URL sync
+│  ├─ state.ts                 # Signals (index/activeTags/selectedSpace/…), URL + theme helpers
+│  ├─ App.tsx                  # #app content: Gallery | Contribution | error panel
+│  ├─ Search.tsx               # Tokenized tag field + typeahead suggestions
+│  ├─ Gallery.tsx              # Crossfading rotation, caption, controls, values overlay
+│  ├─ ValuesOverlay.tsx        # Per-color values; dropdown picks the color space
+│  ├─ Download.tsx             # Export dropdown
+│  ├─ Contribution.tsx         # Prompt copy, JSON paste/preview, fork-owner picker, /api/submit
+│  ├─ icons.tsx                # Font Awesome Pro icons as inline-SVG Preact component
+│  ├─ color.ts                 # hex -> rgb/hsl/oklch/cmyk, mixing, formatting
 │  ├─ export.ts                # Palette export (JSON/CSS/SCSS/SVG/Android/Xcode/Swift/MUI/AntD/Tailwind)
 │  ├─ validate.ts              # Shared validation (scheme + repo name); eval-free for client + Worker
 │  └─ types.ts / style.css
