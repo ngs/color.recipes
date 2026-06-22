@@ -72,7 +72,14 @@ color.recipes/
 │  ├─ export.ts                # Palette export (JSON/CSS/SCSS/SVG/Android/Xcode/Swift/MUI/AntD/Tailwind)
 │  ├─ validate.ts              # Shared validation (scheme + repo name); eval-free for client + Worker
 │  └─ types.ts / style.css
-├─ worker/index.ts             # /api/* (OAuth + write proxy + fork owners) + SSR + HTTPS redirect
+│  └─ *.test.ts(x)             # Vitest unit tests (happy-dom + @testing-library/preact)
+├─ worker/                     # Cloudflare Worker, split by concern
+│  ├─ index.ts                 # Router: HTTPS redirect + /api/* dispatch + SSR/ASSETS fallback
+│  ├─ env.ts                   # Env bindings/secrets interface
+│  ├─ auth.ts                  # OAuth login/callback/me/logout + currentToken
+│  ├─ contribute.ts            # fork owners/check + fork->branch->commit->PR
+│  ├─ github.ts / cookies.ts / ssr.ts / util.ts
+│  └─ *.test.ts                # Vitest unit tests (workerd via @cloudflare/vitest-pool-workers)
 ├─ scripts/
 │  ├─ build-index.ts           # schemes/*.json -> index.json + tag index + OG PNGs + sitemap.xml + llms.txt
 │  ├─ validate-schemes.ts      # CI: validate schemes against the JSON Schema (ajv)
@@ -80,10 +87,11 @@ color.recipes/
 ├─ public/robots.txt           # static (index.json / og / sitemap.xml / llms.txt are generated)
 ├─ index.html
 ├─ wrangler.jsonc              # Worker + assets config; custom domain color.recipes
+├─ vitest.config.ts            # Two projects: "unit" (happy-dom) + "worker" (pool-workers)
 ├─ package.json / tsconfig*.json / vite.config.ts
 └─ .github/workflows/
    ├─ validate.yml             # Validate schemes against the JSON Schema on PR
-   ├─ test.yml                 # typecheck + test:ui (Playwright)
+   ├─ test.yml                 # typecheck + Vitest (npm test) + test:ui (Playwright)
    └─ deploy.yml               # build -> deploy to Cloudflare on push to main
 ```
 - The Cloudflare **zone, email (Google Workspace), and www redirect** are managed via Terraform in `ngs/littleapps-cloudflare-terraform`. The **Worker custom domain + its DNS** are managed by `wrangler` (the app owns its routing).

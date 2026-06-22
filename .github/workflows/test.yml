@@ -19,6 +19,9 @@ jobs:
           # Required by .npmrc to fetch the @fortawesome Pro packages.
           FONT_AWESOME_PACKAGE_TOKEN: ${{ secrets.FONT_AWESOME_PACKAGE_TOKEN }}
       - run: npm run typecheck
+      # Unit tests (Vitest): components + pure logic (happy-dom) and Worker
+      # modules (workerd via @cloudflare/vitest-pool-workers).
+      - run: npm test
       # Headless UI test (scripts/ui-check.ts via Playwright). The script prefers the
       # system Google Chrome and falls back to Playwright's Chromium, so install it
       # (plus OS deps) for the runner.
