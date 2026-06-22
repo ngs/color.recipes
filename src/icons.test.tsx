@@ -14,8 +14,10 @@ describe("Icon", () => {
     expect(svg.querySelector("path")?.getAttribute("d")).toBeTruthy();
   });
 
-  it("appends an extra class when given", () => {
-    const { container } = render(<Icon def={ICONS.chevronDown} class="select-chevron" />);
-    expect(container.querySelector("svg")?.getAttribute("class")).toContain("select-chevron");
+  it("appends an extra class when given (e.g. the brand mark)", () => {
+    const { container } = render(<Icon def={ICONS.swatchbook} class="brand-mark" />);
+    const svg = container.querySelector("svg")!;
+    expect(svg.getAttribute("class")).toContain("brand-mark");
+    expect(svg.getAttribute("class")).toContain("fa-swatchbook");
   });
 });

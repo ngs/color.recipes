@@ -1,16 +1,12 @@
-// Bootstrap: mount the two Preact roots (search field in the header, main content
-// in #app — they share state via signals), load the index, and keep the URL and
+// Bootstrap: mount the whole app into #app, load the index, and keep the URL and
 // app state in sync on back/forward navigation.
 import { render } from "preact";
-import { Search } from "./Search.tsx";
-import { MainView } from "./App.tsx";
+import { App } from "./App.tsx";
 import { index, loadError, activeTags, startSlug, navMode, parseLocation } from "./state.ts";
 import type { SchemeIndex } from "./types.ts";
 
-const searchRoot = document.getElementById("search-root");
-const appRoot = document.getElementById("app");
-if (searchRoot) render(<Search />, searchRoot);
-if (appRoot) render(<MainView />, appRoot);
+const root = document.getElementById("app");
+if (root) render(<App />, root);
 
 // Back/forward: re-derive the filter + start slug from the URL (no new entry).
 window.addEventListener("popstate", () => {

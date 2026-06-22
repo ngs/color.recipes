@@ -87,8 +87,9 @@ body {
   line-height: 1;
 }
 
-/* Logomark scales with the wordmark and inherits its color via currentColor. */
-.brand-mark {
+/* Logomark scales with the wordmark and inherits its color via currentColor.
+   Scoped under .brand so it overrides the shared .fa-icon (height: 1em) sizing. */
+.brand .brand-mark {
   width: 1.35em;
   height: 1.35em;
   flex: none;
@@ -279,6 +280,14 @@ body {
 }
 
 /* ---------- app / gallery ---------- */
+/* Single Preact root: a column holding the sticky top bar + the main area. */
+#app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 .app {
   flex: 1;
   position: relative;

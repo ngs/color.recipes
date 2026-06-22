@@ -1,14 +1,9 @@
-// Font Awesome Pro icons as a Preact component. We import only the icon
-// definitions (tree-shaken) and render an inline <svg> from their path data —
-// no fontawesome-svg-core runtime. Color comes from `currentColor`; size from
-// the shared `.fa-icon` rule (height: 1em).
-import {
-  faChevronDown,
-  faXmark,
-  faArrowRight,
-  faCheck,
-  faDownload,
-} from "@fortawesome/pro-solid-svg-icons";
+// Font Awesome Pro icons rendered as inline SVG (no react-fontawesome / svg-core
+// runtime, no webfont). We import only the icon definitions we use (tree-shaken)
+// and build the <svg> from their path data. Color comes from `currentColor`;
+// size from the shared `.fa-icon` rule (height: 1em).
+import { faChevronDown, faXmark, faArrowRight, faCheck } from "@fortawesome/pro-solid-svg-icons";
+import { faSwatchbook } from "@fortawesome/pro-regular-svg-icons";
 
 type FaIcon = typeof faChevronDown;
 
@@ -17,7 +12,7 @@ export const ICONS = {
   xmark: faXmark,
   arrowRight: faArrowRight,
   check: faCheck,
-  download: faDownload,
+  swatchbook: faSwatchbook, // brand mark (regular)
 };
 
 // def.icon = [width, height, ligatures, unicode, pathData]; pathData is a string

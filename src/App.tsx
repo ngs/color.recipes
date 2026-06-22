@@ -1,11 +1,24 @@
-// The main content root (#app): the gallery when schemes match the filter, the
-// contribution flow when none do, an error panel if the index failed to load.
-// It reacts to the state signals; the search field is a separate root (main.tsx).
+// The whole app, mounted into a single #app root. The top bar (brand + search)
+// and the main content area are both Preact; they react to the state signals.
 import { index, loadError, matched, activeTags, startSlug } from "./state.ts";
+import { Search } from "./Search.tsx";
 import { Gallery } from "./Gallery.tsx";
 import { Contribution } from "./Contribution.tsx";
+import { Icon, ICONS } from "./icons.tsx";
 
-export function MainView() {
+function Topbar() {
+  return (
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="color.recipes home">
+        <Icon def={ICONS.swatchbook} class="brand-mark" />
+        <span class="brand-name">Recipes</span>
+      </a>
+      <Search />
+    </header>
+  );
+}
+
+function MainView() {
   if (loadError.value) {
     return (
       <div class="panel">
@@ -23,4 +36,15 @@ export function MainView() {
   // reshuffles and starts on the right scheme.
   const key = `${activeTags.value.join(",")}|${startSlug.value}`;
   return <Gallery key={key} schemes={list} startSlug={startSlug.value} />;
+}
+
+export function App() {
+  return (
+    <>
+      <Topbar />
+      <main class="app">
+        <MainView />
+      </main>
+    </>
+  );
 }
