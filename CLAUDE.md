@@ -12,7 +12,7 @@
 
 ## Frozen decisions (update SPEC.md too if you change them)
 
-- **No Go.** Plain **TypeScript** frontend.
+- **No Go.** **TypeScript** frontend on **Preact + @preact/signals** (lightweight component layer, ~18 kB gzip — chosen over plain DOM for maintainability and over React for weight).
 - **Cloudflare single origin**: one Worker with static assets. `/api/*` = OAuth + write proxy; everything else is static.
 - **Auth = OAuth Web flow + Worker** (not Device Flow). Token in an **httpOnly cookie** (never reaches the browser). fork/commit/PR also go through the Worker (token = option (i)).
 - **Reads are statically baked at build time** (`schemes/*.json` → `dist/index.json`). No runtime GitHub read API.

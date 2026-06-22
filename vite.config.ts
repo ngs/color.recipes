@@ -7,4 +7,6 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 // else is served as a static asset.
 export default defineConfig({
   plugins: [cloudflare()],
+  // Preact JSX via esbuild (no Babel/preset needed) — keeps the toolchain light.
+  esbuild: { jsx: "automatic", jsxImportSource: "preact" },
 });
