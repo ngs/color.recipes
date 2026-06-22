@@ -458,7 +458,7 @@ body {
   backdrop-filter: blur(6px);
   font-size: 12px;
   /* Safety cap so the multi-column table can never grow into the caption on the
-     opposite corner. The corner layout is only used wide enough (>1100px) for
+     opposite corner. The corner layout is only used wide enough (>660px) for
      the table's natural width to fit; below that the stacked layout takes over
      (see narrow-viewports block). */
   max-width: min(640px, 55vw);
@@ -707,7 +707,7 @@ textarea {
    columns wide, so once the viewport gets narrow the two collide. Stack them
    instead: values pinned to the top, caption to the bottom, each spanning the
    full width with its own internal scroll. */
-@media (max-width: 1100px) {
+@media (max-width: 660px) {
   .topbar {
     padding: 12px 14px;
     gap: 10px 12px;
