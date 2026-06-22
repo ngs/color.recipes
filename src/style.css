@@ -6,7 +6,15 @@
   --accent: #6ea8fe;
   --accent-fg: #0b0d12;
   --radius: 10px;
-  font-family: "Pliant", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "bahnschrift", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 200;
+  font-style: normal;
+}
+
+body button {
+  font-family: "bahnschrift", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 200;
+  font-style: normal;
 }
 
 * {
@@ -68,11 +76,23 @@ body {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--fg);
   text-decoration: none;
   font-size: 18px;
+  line-height: 1;
+}
+
+/* Logomark scales with the wordmark and inherits its color via currentColor. */
+.brand-mark {
+  width: 1.35em;
+  height: 1.35em;
+  flex: none;
+  display: block;
 }
 
 .search {
@@ -122,7 +142,7 @@ body {
   border-radius: 999px;
   padding: 3px 4px 3px 11px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 200;
   white-space: nowrap;
 }
 
@@ -305,7 +325,9 @@ body {
   padding: 14px 18px;
   border-radius: var(--radius);
   backdrop-filter: blur(6px);
-  max-width: min(520px, 80vw);
+  /* Kept under ~40vw so it can never collide with the color-space table pinned
+     to the opposite corner (see .spaces). */
+  max-width: min(460px, 40vw);
 }
 
 .caption h2 {
@@ -345,6 +367,20 @@ body {
 
 .btn:hover {
   border-color: var(--accent);
+}
+
+/* Inline SVG icons (Font Awesome Pro). Size to the surrounding text. */
+.fa-icon {
+  height: 1em;
+  width: auto;
+  vertical-align: -0.125em;
+}
+
+/* Buttons that pair a label with a trailing/leading icon. */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .btn-primary {
@@ -412,8 +448,61 @@ body {
   padding: 12px 14px;
   backdrop-filter: blur(6px);
   font-size: 12px;
+  /* Safety cap so the multi-column table can never grow into the caption on the
+     opposite corner. The corner layout is only used wide enough (>1100px) for
+     the table's natural width to fit; below that the stacked layout takes over
+     (see narrow-viewports block). */
+  max-width: min(640px, 55vw);
   max-height: 60vh;
   overflow: auto;
+}
+
+.spaces-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+/* Borderless space picker: just the label plus a FA chevron, no frame/fill. */
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.spaces-select {
+  appearance: none;
+  text-align: right;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 2px 18px 2px 2px; /* right padding reserves room for the chevron */
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.spaces-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* FA chevron overlaid on the right of the borderless select. */
+.select-chevron {
+  position: absolute;
+  right: 2px;
+  font-size: 10px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Native option popup renders on a light surface — keep its text legible. */
+.spaces-select option {
+  color: #111;
+  background: #fff;
 }
 
 .spaces table {
@@ -422,7 +511,8 @@ body {
 
 .spaces td {
   padding: 2px 8px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "source-code-variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variation-settings: "wght" 200;
   white-space: nowrap;
   color: #fff;
   cursor: pointer;
@@ -478,7 +568,8 @@ textarea,
   border: 1px solid var(--line);
   background: #11141b;
   color: var(--fg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "source-code-variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variation-settings: "wght" 200;
   font-size: 12.5px;
   line-height: 1.5;
   padding: 12px 14px;
@@ -580,7 +671,8 @@ textarea {
   border: 1px solid var(--line);
   background: #161922;
   color: var(--fg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "source-code-variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variation-settings: "wght" 200;
   font-size: 13px;
 }
 
@@ -598,4 +690,43 @@ textarea {
 
 .hidden {
   display: none !important;
+}
+
+/* ---------- narrow viewports ---------- */
+/* The two gallery overlays normally sit in opposite bottom corners (caption
+   bottom-left, color-space table bottom-right). The table is several monospace
+   columns wide, so once the viewport gets narrow the two collide. Stack them
+   instead: values pinned to the top, caption to the bottom, each spanning the
+   full width with its own internal scroll. */
+@media (max-width: 1100px) {
+  .topbar {
+    padding: 12px 14px;
+    gap: 10px 12px;
+  }
+
+  .counter {
+    display: none;
+  }
+
+  .spaces {
+    top: 12px;
+    right: 12px;
+    bottom: auto;
+    left: 12px;
+    max-width: none;
+    max-height: 42vh;
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  .spaces td {
+    padding: 2px 6px;
+  }
+
+  .caption {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
+  }
 }

@@ -102,6 +102,33 @@ export function formatOklch(hex: string): string {
   return `oklch(${round(l * 100, 1)}% ${round(c, 3)} ${round(h)})`;
 }
 
+export interface Cmyk {
+  c: number;
+  m: number;
+  y: number;
+  k: number;
+}
+
+/** Naive sRGB→CMYK (no ICC profile); good enough for an at-a-glance reference. */
+export function rgbToCmyk({ r, g, b }: Rgb): Cmyk {
+  const r1 = r / 255;
+  const g1 = g / 255;
+  const b1 = b / 255;
+  const k = 1 - Math.max(r1, g1, b1);
+  if (k >= 1) return { c: 0, m: 0, y: 0, k: 100 };
+  return {
+    c: ((1 - r1 - k) / (1 - k)) * 100,
+    m: ((1 - g1 - k) / (1 - k)) * 100,
+    y: ((1 - b1 - k) / (1 - k)) * 100,
+    k: k * 100,
+  };
+}
+
+export function formatCmyk(hex: string): string {
+  const { c, m, y, k } = rgbToCmyk(hexToRgb(hex));
+  return `cmyk(${round(c)}% ${round(m)}% ${round(y)}% ${round(k)}%)`;
+}
+
 /** Relative luminance (WCAG) — used to pick readable foreground text. */
 export function luminance(hex: string): number {
   const { r, g, b } = hexToRgb(hex);
@@ -122,11 +149,12 @@ export function mix(a: string, b: string, t: number): string {
   return `#${toHex(ca.r + (cb.r - ca.r) * t)}${toHex(ca.g + (cb.g - ca.g) * t)}${toHex(ca.b + (cb.b - ca.b) * t)}`;
 }
 
-export type ColorSpace = "hex" | "rgb" | "hsl" | "oklch";
+export type ColorSpace = "hex" | "rgb" | "hsl" | "oklch" | "cmyk";
 
 export const FORMATTERS: Record<ColorSpace, (hex: string) => string> = {
   hex: formatHex,
   rgb: formatRgb,
   hsl: formatHsl,
   oklch: formatOklch,
+  cmyk: formatCmyk,
 };
