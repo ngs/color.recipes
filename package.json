@@ -12,19 +12,25 @@
     "deploy": "npm run build && wrangler deploy",
     "validate": "tsx scripts/validate-schemes.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
-    "test:ui": "npm run build && tsx scripts/ui-check.ts"
+    "test:ui": "npm run build && tsx scripts/ui-check.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.41.0",
+    "@cloudflare/vitest-pool-workers": "^0.16.18",
     "@cloudflare/workers-types": "^4.20260617.1",
+    "@testing-library/preact": "^3.2.4",
     "@types/node": "^25.9.3",
     "@types/pngjs": "^6.0.5",
     "ajv": "^8.20.0",
+    "happy-dom": "^20.10.6",
     "playwright": "^1.61.0",
     "pngjs": "^7.0.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
+    "vitest": "^4.1.9",
     "wrangler": "^4.101.0"
   },
   "dependencies": {
