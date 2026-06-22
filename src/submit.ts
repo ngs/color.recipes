@@ -3,6 +3,7 @@
 
 import { validateAiInput, validateScheme, validateRepoName, slugify, type Scheme } from "./validate.ts";
 import { FORMATTERS, readableText } from "./color.ts";
+import { ICONS, iconNode } from "./icons.ts";
 
 const DEFAULT_COUNT = 5;
 
@@ -102,7 +103,7 @@ export function mountContribution(app: HTMLElement, tags: string[]): void {
   const copyBtn = el("button", { className: "btn btn-primary", textContent: "Copy prompt" });
   copyBtn.addEventListener("click", async () => {
     await navigator.clipboard?.writeText(prompt);
-    copyBtn.textContent = "Copied ✓";
+    copyBtn.replaceChildren("Copied ", iconNode(ICONS.check));
     window.setTimeout(() => (copyBtn.textContent = "Copy prompt"), 1500);
   });
   panel.append(
@@ -348,7 +349,7 @@ async function submit(
       "ok",
       `Pull request opened: <a href="${data.url}" target="_blank" rel="noopener">${data.url}</a>`,
     );
-    submitBtn.textContent = "Opened ✓";
+    submitBtn.replaceChildren("Opened ", iconNode(ICONS.check));
   } catch (e) {
     showNotice("error", `Submit failed: ${(e as Error).message}`);
     submitBtn.disabled = false;

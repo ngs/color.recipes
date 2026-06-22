@@ -20,5 +20,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+        env:
+          # Required by .npmrc to fetch the @fortawesome Pro packages.
+          FONT_AWESOME_PACKAGE_TOKEN: ${{ secrets.FONT_AWESOME_PACKAGE_TOKEN }}
       # Validate every schemes/*.json against schema/scheme.schema.json (SPEC §5).
       - run: npm run validate

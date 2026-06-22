@@ -22,9 +22,20 @@ import {
 } from "./color.ts";
 import { mountContribution } from "./submit.ts";
 import { FORMATS, triggerDownload } from "./export.ts";
+import { ICONS, iconNode } from "./icons.ts";
 
 const ROTATE_MS = 6000;
-const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
+const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch", "cmyk"];
+const SPACE_LABELS: Record<ColorSpace, string> = {
+  hex: "HEX",
+  rgb: "RGB",
+  hsl: "HSL",
+  oklch: "OKLCH",
+  cmyk: "CMYK",
+};
+// Which color space the values overlay shows. Persisted at module scope so the
+// choice survives scheme rotation (the overlay is rebuilt on every change).
+let selectedSpace: ColorSpace = "hex";
 
 const app = document.getElementById("app") as HTMLElement;
 const searchForm = document.getElementById("search") as HTMLFormElement;
@@ -122,7 +133,7 @@ function renderTokens(): void {
     chip.append(tag);
     const x = document.createElement("button");
     x.type = "button";
-    x.textContent = "×";
+    x.appendChild(iconNode(ICONS.xmark));
     x.setAttribute("aria-label", `Remove tag ${tag}`);
     x.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -247,24 +258,57 @@ function stopRotation(): void {
 function colorSpaceTable(scheme: IndexedScheme): HTMLElement {
   const box = document.createElement("div");
   box.className = "spaces";
+
+  // A dropdown picks the single color space shown; the table renders one value
+  // per color for that space.
+  const head = document.createElement("div");
+  head.className = "spaces-head";
+  // Borderless native <select> (just label + chevron); the FA chevron is laid
+  // over it and the native one is hidden via appearance:none.
+  const wrap = document.createElement("div");
+  wrap.className = "select-wrap";
+  const select = document.createElement("select");
+  select.className = "spaces-select";
+  select.setAttribute("aria-label", "Color space");
+  for (const space of SPACES) {
+    const opt = document.createElement("option");
+    opt.value = space;
+    opt.textContent = SPACE_LABELS[space];
+    select.appendChild(opt);
+  }
+  select.value = selectedSpace;
+  wrap.appendChild(select);
+  wrap.appendChild(iconNode(ICONS.chevronDown, ["select-chevron"]));
+  head.appendChild(wrap);
+  box.appendChild(head);
+
   const table = document.createElement("table");
-  for (const hex of scheme.colors) {
-    const tr = document.createElement("tr");
-    const dot = document.createElement("td");
-    dot.className = "dot";
-    dot.innerHTML = `<span class="sw" style="background:${hex}"></span>`;
-    tr.appendChild(dot);
-    for (const space of SPACES) {
+  box.appendChild(table);
+
+  const renderRows = (): void => {
+    table.replaceChildren();
+    for (const hex of scheme.colors) {
+      const tr = document.createElement("tr");
+      const dot = document.createElement("td");
+      dot.className = "dot";
+      dot.innerHTML = `<span class="sw" style="background:${hex}"></span>`;
+      tr.appendChild(dot);
       const td = document.createElement("td");
-      const text = FORMATTERS[space](hex);
+      const text = FORMATTERS[selectedSpace](hex);
       td.textContent = text;
       td.title = "Click to copy";
       td.addEventListener("click", () => navigator.clipboard?.writeText(text));
       tr.appendChild(td);
+      table.appendChild(tr);
     }
-    table.appendChild(tr);
-  }
-  box.appendChild(table);
+  };
+  renderRows();
+
+  select.addEventListener("change", () => {
+    selectedSpace = select.value as ColorSpace;
+    renderRows();
+  });
+
   return box;
 }
 
@@ -287,8 +331,8 @@ function buildDownload(): HTMLElement {
 
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "btn";
-  btn.textContent = "Download ▾";
+  btn.className = "btn btn-icon";
+  btn.append("Download", iconNode(ICONS.chevronDown));
 
   const menu = document.createElement("ul");
   menu.className = "dl-menu hidden";
@@ -384,8 +428,8 @@ function renderGallery(schemes: IndexedScheme[], startSlug: string | undefined, 
   caption.querySelector(".meta")!.replaceChildren(...order[0].tags.map(metaChip));
 
   const nextBtn = document.createElement("button");
-  nextBtn.className = "btn";
-  nextBtn.textContent = "Next →";
+  nextBtn.className = "btn btn-icon";
+  nextBtn.append("Next", iconNode(ICONS.arrowRight));
   nextBtn.addEventListener("click", () => {
     pos = (pos + 1) % order.length;
     show(order[pos], true); // manual -> push
