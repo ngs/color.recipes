@@ -5,6 +5,7 @@ import { selectedSpace } from "./state.ts";
 import { FORMATTERS, type ColorSpace } from "./color.ts";
 import type { IndexedScheme } from "./types.ts";
 import { Icon, ICONS } from "./icons.tsx";
+import { RollingText } from "./RollingText.tsx";
 
 const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch", "cmyk"];
 const SPACE_LABELS: Record<ColorSpace, string> = {
@@ -44,15 +45,16 @@ export function ValuesOverlay({
       </div>
       <table>
         <tbody>
-          {scheme.colors.map((hex) => {
+          {scheme.colors.map((hex, i) => {
             const text = FORMATTERS[space](hex);
             return (
-              <tr key={hex}>
+              // Keyed by position so the row persists and its value rolls.
+              <tr key={i}>
                 <td class="dot">
                   <span class="sw" style={{ background: hex }} />
                 </td>
                 <td data-tooltip="Click to copy" onClick={() => navigator.clipboard?.writeText(text)}>
-                  {text}
+                  <RollingText text={text} />
                 </td>
               </tr>
             );

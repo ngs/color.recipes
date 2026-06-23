@@ -18,6 +18,7 @@ import type { IndexedScheme } from "./types.ts";
 import { FormatMenu } from "./FormatMenu.tsx";
 import { ValuesOverlay } from "./ValuesOverlay.tsx";
 import { Icon, ICONS } from "./icons.tsx";
+import { RollingText } from "./RollingText.tsx";
 import { FORMATS, triggerDownload } from "./export.ts";
 
 // Single-file (text) formats are the ones that can be copied as a snippet.
@@ -183,13 +184,17 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
             />
           </div>
         )}
-        <h2>{current.name}</h2>
+        <h2>
+          <RollingText text={current.name} />
+        </h2>
         <div class="meta">
-          {sortedTags.map((t) => {
+          {sortedTags.map((t, i) => {
             const active = selected.has(t);
             return (
+              // Keyed by position (not tag) so the chip persists across schemes
+              // and its label rolls from the old tag to the new one.
               <button
-                key={t}
+                key={i}
                 type="button"
                 class={active ? "chip chip--active" : "chip"}
                 aria-pressed={active}
@@ -205,7 +210,7 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
                     <Icon def={active ? ICONS.minus : ICONS.plus} />
                   </span>
                 </span>
-                {t}
+                <RollingText text={t} />
               </button>
             );
           })}

@@ -11,7 +11,6 @@ function Topbar() {
     <header class="topbar">
       <a class="brand" href="/" aria-label="color.recipes home">
         <Icon def={ICONS.swatchbook} class="brand-mark" />
-        <span class="brand-name">Recipes</span>
       </a>
       <Search />
     </header>
