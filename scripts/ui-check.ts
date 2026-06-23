@@ -11,6 +11,7 @@ import { readFile, stat } from "node:fs/promises";
 import { join, extname, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, type Browser } from "playwright";
+import { FORMATS } from "../src/export.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIR = join(root, "dist", "client");
@@ -192,9 +193,15 @@ try {
   ]);
   check("Xcode export downloads a .zip", xcDownload.suggestedFilename().endsWith(".zip"), xcDownload.suggestedFilename());
 
-  // 9. copy menu excludes the binary (.zip) format
+  // 9. copy menu excludes binary formats (count derived from FORMATS, so adding
+  //    more binary formats later doesn't make this assertion brittle)
   const copyCount = await page.locator(".menu--copy .menu-list li").count();
-  check("copy menu omits the binary format", copyCount === formatCount - 1, `copy=${copyCount} download=${formatCount}`);
+  const expectedCopy = FORMATS.filter((f) => !f.binary).length;
+  check(
+    "copy menu omits binary formats",
+    copyCount === expectedCopy,
+    `copy=${copyCount} expected=${expectedCopy} download=${formatCount}`,
+  );
 } finally {
   await browser.close();
   server.close();

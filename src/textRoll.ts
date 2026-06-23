@@ -60,8 +60,9 @@ function cjkPath(a: string, b: string): string[] {
   return p;
 }
 
-// The character path (source -> target states) for a single position.
-function charPath(a: string, b: string): string[] {
+// The character path (source -> target states) for a single position. Exported
+// for unit testing the per-position morph logic.
+export function charPath(a: string, b: string): string[] {
   if (a === b) return [a];
   const sa = seqOf(a);
   const sb = seqOf(b);

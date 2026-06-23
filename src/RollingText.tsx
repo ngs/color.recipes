@@ -17,6 +17,12 @@ export function RollingText({
   const ref = useRef<HTMLSpanElement>(null);
   const prev = useRef<string | null>(null);
   const cancel = useRef<() => void>(() => {});
+  // Read the latest animation options at roll time without re-running (and thus
+  // cancelling) on every render when an inline `easing`/`duration` is passed.
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
+  const easingRef = useRef(easing);
+  easingRef.current = easing;
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -28,7 +34,10 @@ export function RollingText({
     }
     if (prev.current === text) return;
     cancel.current();
-    cancel.current = rollText(el, prev.current, text, { duration, easing });
+    cancel.current = rollText(el, prev.current, text, {
+      duration: durationRef.current,
+      easing: easingRef.current,
+    });
     prev.current = text;
     return () => cancel.current();
   }, [text]);

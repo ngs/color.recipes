@@ -53,7 +53,10 @@ export function ValuesOverlay({
                 <td class="dot">
                   <span class="sw" style={{ background: hex }} />
                 </td>
-                <td data-tooltip="Click to copy" onClick={() => navigator.clipboard?.writeText(text)}>
+                <td
+                  data-tooltip="Click to copy"
+                  onClick={() => void navigator.clipboard?.writeText(text).catch(() => {})}
+                >
                   <RollingText text={text} />
                 </td>
               </tr>

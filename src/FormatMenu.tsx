@@ -38,7 +38,11 @@ export function FormatMenu({
 
   const pick = async (f: ExportFormat): Promise<void> => {
     setOpen(false);
-    await onPick(f);
+    try {
+      await onPick(f);
+    } catch {
+      return; // e.g. a clipboard write rejected — don't show the confirmation
+    }
     if (confirmIcon) {
       setConfirmed(true);
       window.setTimeout(() => setConfirmed(false), 1200);
@@ -59,13 +63,22 @@ export function FormatMenu({
       >
         <Icon def={confirmed && confirmIcon ? confirmIcon : icon} />
       </button>
-      <ul class={open ? "menu-list" : "menu-list hidden"}>
+      <ul class={open ? "menu-list" : "menu-list hidden"} role="menu">
         {formats.map((f) => (
           <li
             key={f.id}
+            role="menuitem"
+            tabIndex={open ? 0 : -1}
             onClick={(e) => {
               e.stopPropagation();
               void pick(f);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                void pick(f);
+              }
             }}
           >
             {f.label}

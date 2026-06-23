@@ -678,9 +678,11 @@ body {
   cursor: pointer;
 }
 
-.menu-list li:hover {
+.menu-list li:hover,
+.menu-list li:focus-visible {
   background: var(--accent);
   color: var(--accent-fg);
+  outline: none;
 }
 
 /* ---------- color-space readout ---------- */
