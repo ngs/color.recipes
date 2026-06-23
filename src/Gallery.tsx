@@ -78,6 +78,16 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
   // control once would pause rotation forever.
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
+  // Pointer type of the last press inside an overlay, so a touch press doesn't
+  // arm the focus pause on hover-capable hybrids.
+  const lastPointerType = useRef<string>("mouse");
+  // Pause-on-hover/focus is a pointer affordance. On a touch-only device there's
+  // no natural "unhover"/"blur" — iOS keeps a sticky hover and fires no
+  // mouse-leave when you next tap a non-clickable area — so the pause would
+  // stick and stall auto-rotation (and a tag chip remounts straight back into
+  // the stuck state). Only arm it where a real hover exists; on touch we never
+  // pause, and tapping Prev/Next still restarts the dwell.
+  const canHover = window.matchMedia("(hover: hover)").matches;
   const paused = hovered || focused;
   // Bumped on every scheme change; used as the progress-bar key so the dwell
   // animation restarts (and as the single clock that drives auto-rotation).
@@ -158,15 +168,30 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
 
   // Pause auto-rotation only while pointer/focus is on an overlay (caption or
   // values) — NOT over the full-bleed palette, so an idle cursor doesn't stall
-  // rotation. Resume once focus leaves the overlay entirely.
-  const pauseProps: JSX.HTMLAttributes<HTMLDivElement> = {
-    onMouseEnter: () => setHovered(true),
-    onMouseLeave: () => setHovered(false),
-    onFocusCapture: () => setFocused(true),
-    onBlurCapture: (e) => {
-      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
-    },
-  };
+  // rotation. Resume once focus leaves the overlay entirely. Disabled entirely
+  // on touch-only devices (see `canHover`).
+  const pauseProps: JSX.HTMLAttributes<HTMLDivElement> = canHover
+    ? {
+        onPointerDownCapture: (e) => {
+          lastPointerType.current = e.pointerType;
+        },
+        // Hover pause is mouse-only: a touch "hover" never leaves and would stick.
+        onPointerEnter: (e) => {
+          if (e.pointerType === "mouse") setHovered(true);
+        },
+        onPointerLeave: (e) => {
+          if (e.pointerType === "mouse") setHovered(false);
+        },
+        // Focus pause is for keyboard users; skip it for touch taps, which can
+        // focus a control without ever firing a matching blur on iOS.
+        onFocusCapture: () => {
+          if (lastPointerType.current !== "touch") setFocused(true);
+        },
+        onBlurCapture: (e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
+        },
+      }
+    : {};
 
   return (
     <div class="stage">
