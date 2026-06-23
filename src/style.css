@@ -347,8 +347,35 @@ body {
   transform: scaleX(1);
 }
 
+/* Mounted already-revealed (e.g. right after a swipe): no wipe. */
+.layer.is-instant .swatch {
+  transform: scaleX(1);
+  transition: none;
+}
+
+/* Swipe-to-navigate layers: the base is fully shown, the top wipes over it by
+   --t (driven directly from the touch handler). On release it settles to its
+   target with a short transition. */
+.drag-base .swatch {
+  transform: scaleX(1);
+  transition: none;
+}
+
+.drag-top .swatch {
+  transform: scaleX(var(--t, 0));
+  transition: none;
+}
+
+.drag-top.settling .swatch {
+  transition: transform 320ms ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .swatch {
+    transition: none;
+  }
+
+  .drag-top.settling .swatch {
     transition: none;
   }
 }
