@@ -65,7 +65,13 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
   const [layers, setLayers] = useState<{ key: number; scheme: IndexedScheme }[]>(() => [
     { key: 0, scheme: order[0] },
   ]);
-  const [paused, setPaused] = useState(false);
+  // Pause auto-rotation while the user is interacting — hovering OR keyboard
+  // focus inside the stage. Tracked separately (not one `paused` flag) so that
+  // focus leaving the stage actually resumes; otherwise focusing a caption
+  // control once would pause rotation forever.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const paused = hovered || focused;
   const [tick, setTick] = useState(0); // bumped to restart the dwell timer
 
   // First scheme: theme + URL + title. navMode says whether this mount came from
@@ -147,9 +153,14 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
   return (
     <div
       class="stage"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(e) => {
+        // Resume once focus leaves the stage entirely (relatedTarget = where it
+        // goes; null when focus is dropped).
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
+      }}
     >
       {layers.map((l) => (
         <Layer key={l.key} scheme={l.scheme} />
