@@ -16,6 +16,10 @@ const SPACE_LABELS: Record<ColorSpace, string> = {
   cmyk: "CMYK",
 };
 
+// Click-to-copy is only offered where the Clipboard API exists (HTTPS / secure
+// context). Elsewhere the value is shown as plain, non-interactive text.
+const canCopy = typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function";
+
 export function ValuesOverlay({
   scheme,
   pauseProps,
@@ -47,28 +51,34 @@ export function ValuesOverlay({
         <tbody>
           {scheme.colors.map((hex, i) => {
             const text = FORMATTERS[space](hex);
-            const copy = () => void navigator.clipboard?.writeText(text).catch(() => {});
+            const copy = () => void navigator.clipboard.writeText(text).catch(() => {});
             return (
               // Keyed by position so the row persists and its value rolls.
               <tr key={i}>
                 <td class="dot">
                   <span class="sw" style={{ background: hex }} />
                 </td>
-                <td
-                  data-tooltip="Click to copy"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Copy ${text}`}
-                  onClick={copy}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      copy();
-                    }
-                  }}
-                >
-                  <RollingText text={text} />
-                </td>
+                {canCopy ? (
+                  <td
+                    data-tooltip="Click to copy"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Copy ${text}`}
+                    onClick={copy}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        copy();
+                      }
+                    }}
+                  >
+                    <RollingText text={text} />
+                  </td>
+                ) : (
+                  <td>
+                    <RollingText text={text} />
+                  </td>
+                )}
               </tr>
             );
           })}
