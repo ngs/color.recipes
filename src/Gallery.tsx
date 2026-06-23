@@ -1,6 +1,8 @@
-// The gallery stage: crossfading scheme layers on a timer (paused on hover/
-// focus), a caption with the name + tag chips + controls, a counter, and the
-// values overlay. Remounted (via key) whenever the tag filter changes.
+// The gallery stage: scheme layers that wipe in on a timer (paused while a
+// pointer/focus is on an overlay), a caption with the name + tag chips +
+// controls, a counter, and the values overlay. Remounted (via key) whenever the
+// tag filter changes.
+import type { JSX } from "preact";
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from "preact/hooks";
 import {
   activeTags,
@@ -45,8 +47,12 @@ function Layer({ scheme }: { scheme: IndexedScheme }) {
       el.classList.add("is-visible");
       return;
     }
-    const id = requestAnimationFrame(() => el.classList.add("is-visible"));
-    return () => cancelAnimationFrame(id);
+    // Force a reflow to commit the opacity:0 start state, then flip to visible so
+    // the 0 -> 1 transition reliably runs. (A requestAnimationFrame here was
+    // flaky for setInterval-driven auto-rotation — the class landed before paint,
+    // so the fade was skipped.)
+    void el.offsetWidth;
+    el.classList.add("is-visible");
   }, []);
   return (
     <div class="layer" ref={ref}>
@@ -72,7 +78,9 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const paused = hovered || focused;
-  const [tick, setTick] = useState(0); // bumped to restart the dwell timer
+  // Bumped on every scheme change; used as the progress-bar key so the dwell
+  // animation restarts (and as the single clock that drives auto-rotation).
+  const [rotation, setRotation] = useState(0);
 
   // First scheme: theme + URL + title. navMode says whether this mount came from
   // a manual action (push a history entry) or load/back-forward (replace).
@@ -88,6 +96,7 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
     applyTheme(scheme);
     setTitle(scheme);
     setCurrent(scheme);
+    setRotation((r) => r + 1); // restart the dwell progress
     layerKey.current += 1;
     const key = layerKey.current;
     setLayers((prev) => [prev[prev.length - 1], { key, scheme }]);
@@ -104,32 +113,28 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
     return () => window.clearTimeout(t);
   }, [layers]);
 
-  // Auto-rotation; reshuffle when wrapping past the end.
-  useEffect(() => {
-    if (paused || order.length < 2) return;
-    const id = window.setInterval(() => {
-      let p = posRef.current + 1;
-      if (p >= order.length) {
-        const reshuffled = shuffle(order);
-        posRef.current = 0;
-        setUrl(reshuffled[0].slug, activeTags.peek(), false);
-        show(reshuffled[0]);
-        setOrder(reshuffled);
-        return;
-      }
-      posRef.current = p;
-      setUrl(order[p].slug, activeTags.peek(), false);
-      show(order[p]);
-    }, ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [order, paused, tick, show]);
+  // Advance to the next scheme (reshuffle when wrapping). Driven by the dwell
+  // progress bar's `animationend`, so pausing the bar pauses rotation too.
+  const advance = (): void => {
+    const p = posRef.current + 1;
+    if (p >= order.length) {
+      const reshuffled = shuffle(order);
+      posRef.current = 0;
+      setUrl(reshuffled[0].slug, activeTags.peek(), false);
+      show(reshuffled[0]);
+      setOrder(reshuffled);
+      return;
+    }
+    posRef.current = p;
+    setUrl(order[p].slug, activeTags.peek(), false);
+    show(order[p]);
+  };
 
   const go = (delta: number): void => {
     const p = (posRef.current + delta + order.length) % order.length;
     posRef.current = p;
     setUrl(order[p].slug, activeTags.peek(), true);
-    show(order[p]);
-    setTick((t) => t + 1); // manual nav resets the dwell timer
+    show(order[p]); // also bumps `rotation`, restarting the dwell progress
   };
   const onPrev = (): void => go(-1);
   const onNext = (): void => go(1);
@@ -150,22 +155,34 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
     (a, b) => Number(selected.has(b)) - Number(selected.has(a)),
   );
 
+  // Pause auto-rotation only while pointer/focus is on an overlay (caption or
+  // values) — NOT over the full-bleed palette, so an idle cursor doesn't stall
+  // rotation. Resume once focus leaves the overlay entirely.
+  const pauseProps: JSX.HTMLAttributes<HTMLDivElement> = {
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+    onFocusCapture: () => setFocused(true),
+    onBlurCapture: (e) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
+    },
+  };
+
   return (
-    <div
-      class="stage"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setFocused(true)}
-      onBlurCapture={(e) => {
-        // Resume once focus leaves the stage entirely (relatedTarget = where it
-        // goes; null when focus is dropped).
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
-      }}
-    >
+    <div class="stage">
       {layers.map((l) => (
         <Layer key={l.key} scheme={l.scheme} />
       ))}
-      <div class="caption">
+      <div class="caption" {...pauseProps}>
+        {order.length > 1 && (
+          <div class="caption-progress-track" aria-hidden="true">
+            <div
+              class="caption-progress"
+              key={rotation}
+              style={{ animationDuration: `${ROTATE_MS}ms`, animationPlayState: paused ? "paused" : "running" }}
+              onAnimationEnd={advance}
+            />
+          </div>
+        )}
         <h2>{current.name}</h2>
         <div class="meta">
           {sortedTags.map((t) => {
@@ -248,7 +265,7 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
         </div>
       </div>
       <div class="counter">{counterText}</div>
-      <ValuesOverlay scheme={current} />
+      <ValuesOverlay scheme={current} pauseProps={pauseProps} />
     </div>
   );
 }

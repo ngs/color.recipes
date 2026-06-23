@@ -43,7 +43,14 @@ body {
 .chip,
 .btn,
 .suggest,
-.suggest .sg {
+.suggest .sg,
+.caption,
+.caption h2,
+.ctl,
+.pos,
+.spaces,
+.spaces td,
+.spaces-select {
   transition: background-color 0.8s ease, border-color 0.8s ease, color 0.8s ease;
 }
 
@@ -55,7 +62,14 @@ body {
   .chip,
   .btn,
   .suggest,
-  .suggest .sg {
+  .suggest .sg,
+  .caption,
+  .caption h2,
+  .ctl,
+  .pos,
+  .spaces,
+  .spaces td,
+  .spaces-select {
     transition: none;
   }
 }
@@ -253,7 +267,7 @@ body {
 
 .chip {
   border: 1px solid var(--line);
-  background: #161922;
+  background: var(--bg);
   color: var(--muted);
   border-radius: 999px;
   padding: 4px 11px;
@@ -305,22 +319,25 @@ body {
   position: absolute;
   inset: 0;
   display: flex;
-  opacity: 0;
-  transition: opacity 0.9s ease;
 }
 
-.layer.is-visible {
-  opacity: 1;
+/* Each new bar wipes in: its width grows 0 -> full (scaleX) over the layer
+   below. transform-origin keeps the growth anchored to the bar's left edge. */
+.swatch {
+  flex: 1;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.9s ease;
+}
+
+.layer.is-visible .swatch {
+  transform: scaleX(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .layer {
+  .swatch {
     transition: none;
   }
-}
-
-.swatch {
-  flex: 1;
 }
 
 /* Scheme caption overlay */
@@ -329,14 +346,57 @@ body {
   left: 24px;
   bottom: 24px;
   z-index: 5;
-  background: rgba(0, 0, 0, 0.42);
-  color: #fff;
+  /* The scheme's darkest color, semi-transparent (eases with the theme). */
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  color: var(--fg);
   padding: 14px 18px;
   border-radius: var(--radius);
   backdrop-filter: blur(6px);
   /* Kept under ~40vw so it can never collide with the color-space table pinned
      to the opposite corner (see .spaces). */
   max-width: min(460px, 40vw);
+  /* NOTE: no overflow:hidden here — the download/copy menus open upward beyond
+     the box. The progress fill is clipped by its own track instead. */
+}
+
+/* The caption background doubles as a dwell progress bar: a fill grows
+   left->right over ROTATE_MS, then `animationend` triggers the next scheme.
+   Pausing the animation (animation-play-state) pauses both the bar and rotation
+   together. A dedicated track clips the fill to the rounded box without clipping
+   the menus. */
+.caption-progress-track {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+
+.caption-progress {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: rgba(255, 255, 255, 0.08);
+  animation-name: caption-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes caption-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Caption content sits above the progress fill. */
+.caption > :not(.caption-progress-track) {
+  position: relative;
+  z-index: 1;
 }
 
 .caption h2 {
@@ -352,9 +412,9 @@ body {
 }
 
 .caption .meta .chip {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
   border-color: transparent;
-  color: #fff;
+  color: var(--fg);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -364,7 +424,8 @@ body {
 }
 
 .caption .meta .chip:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--fg);
+  color: var(--bg);
 }
 
 /* The leading circle is ALWAYS present (fixed width) so showing/hiding the icon
@@ -468,8 +529,8 @@ body {
   justify-content: center;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--line);
-  background: #1b1f2a;
+  border: none;
+  background: transparent;
   color: var(--fg);
   border-radius: 8px;
   font-size: 14px;
@@ -477,7 +538,7 @@ body {
 }
 
 .ctl:hover {
-  border-color: var(--accent);
+  background-color: var(--accent);
 }
 
 .ctl:disabled {
@@ -588,7 +649,9 @@ body {
   right: 20px;
   bottom: 24px;
   z-index: 5;
-  background: rgba(0, 0, 0, 0.42);
+  /* Scheme's darkest color, semi-transparent + lightest as fg (eases w/ theme). */
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  color: var(--fg);
   border-radius: var(--radius);
   padding: 12px 14px;
   backdrop-filter: blur(6px);
@@ -624,7 +687,7 @@ body {
   -webkit-appearance: none;
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--fg);
   padding: 2px 18px 2px 2px; /* right padding reserves room for the chevron */
   font-size: 12px;
   font-weight: 600;
@@ -662,7 +725,7 @@ body {
   font-family: "source-code-variable", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variation-settings: "wght" 200;
   white-space: nowrap;
-  color: #fff;
+  color: var(--fg);
   cursor: pointer;
 }
 

@@ -1,5 +1,6 @@
 // The bottom-right values overlay: a borderless dropdown picks one color space,
 // and the table shows that space's value for each color (click a value to copy).
+import type { JSX } from "preact";
 import { selectedSpace } from "./state.ts";
 import { FORMATTERS, type ColorSpace } from "./color.ts";
 import type { IndexedScheme } from "./types.ts";
@@ -14,10 +15,16 @@ const SPACE_LABELS: Record<ColorSpace, string> = {
   cmyk: "CMYK",
 };
 
-export function ValuesOverlay({ scheme }: { scheme: IndexedScheme }) {
+export function ValuesOverlay({
+  scheme,
+  pauseProps,
+}: {
+  scheme: IndexedScheme;
+  pauseProps?: JSX.HTMLAttributes<HTMLDivElement>;
+}) {
   const space = selectedSpace.value;
   return (
-    <div class="spaces">
+    <div class="spaces" {...pauseProps}>
       <div class="spaces-head">
         <div class="select-wrap">
           <select
