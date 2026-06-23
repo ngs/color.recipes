@@ -5,6 +5,7 @@
 import { signal, computed } from "@preact/signals";
 import type { IndexedScheme, SchemeIndex } from "./types.ts";
 import { readableText, luminance, hexToOklch, mix, type ColorSpace } from "./color.ts";
+import { faviconDataUri } from "./brand.ts";
 
 export const ROTATE_MS = 6000;
 
@@ -120,4 +121,9 @@ export function applyTheme(scheme: IndexedScheme): void {
   r.setProperty("--muted", mix(bg, fg, 0.6));
   // Tint the iOS status bar / browser UI with the scheme's darkest color.
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
+  // Retint the tab favicon to match the scheme (darkest tile, lightest glyph).
+  // Only the SVG favicon is dynamic; PNG fallbacks and the installed PWA icon
+  // stay fixed (a home-screen icon can't be changed after install).
+  const favicon = document.querySelector<HTMLLinkElement>("link#favicon");
+  if (favicon) favicon.href = faviconDataUri(bg, fg);
 }

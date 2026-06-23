@@ -2,17 +2,34 @@
 // app state in sync on back/forward navigation.
 import { render } from "preact";
 import { App } from "./App.tsx";
-import { index, loadError, activeTags, startSlug, navMode, parseLocation } from "./state.ts";
+import {
+  index,
+  loadError,
+  activeTags,
+  startSlug,
+  navMode,
+  parseLocation,
+} from "./state.ts";
 import type { SchemeIndex } from "./types.ts";
 
 const root = document.getElementById("app");
 if (root) render(<App />, root);
 
+// Register the PWA service worker (production only — a dev SW would cache stale
+// modules and fight Vite's HMR).
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 // iOS Safari ignores `user-scalable=no`. Block pinch-zoom via the gesture
 // events, and double-tap zoom via a touchend guard (touch-action alone isn't
 // reliable on iOS). Single taps/scrolls/clicks are unaffected.
 for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
-  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+  document.addEventListener(type, (e) => e.preventDefault(), {
+    passive: false,
+  });
 }
 let lastTouchEnd = 0;
 document.addEventListener(
