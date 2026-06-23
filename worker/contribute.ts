@@ -170,12 +170,19 @@ export async function submit(request: Request, env: Env): Promise<Response> {
   });
   if (!putRes.ok) return json({ error: await ghError(putRes, "commit file") }, 502);
 
-  // 7. Open the PR against upstream.
+  // 7. Open the PR against upstream. The body shows a swatch per color (rendered
+  // via placehold.co, since GitHub markdown can't fill a color box otherwise).
+  const swatches = scheme.colors
+    .map((hex) => {
+      const h = hex.replace(/^#/, "");
+      return `- ![${hex}](https://placehold.co/15x15/${h}/${h}.png) \`${hex}\``;
+    })
+    .join("\n");
   const prRes = await gh(token, "POST", `/repos/${upstreamOwner}/${upstreamRepo}/pulls`, {
     title: `Add scheme: ${scheme.name}`,
     head: `${forkOwner}:${branch}`,
     base: baseBranch,
-    body: `Adds \`${path}\` via color.recipes.\n\nTags: ${scheme.tags.join(", ")}`,
+    body: `Adds \`${path}\` via color.recipes.\n\n**Colors**\n\n${swatches}\n\n**Tags:** ${scheme.tags.join(", ")}`,
     maintainer_can_modify: true,
   });
   if (!prRes.ok) return json({ error: await ghError(prRes, "open PR") }, 502);
