@@ -44,7 +44,7 @@ export function ValuesOverlay({ scheme }: { scheme: IndexedScheme }) {
                 <td class="dot">
                   <span class="sw" style={{ background: hex }} />
                 </td>
-                <td title="Click to copy" onClick={() => navigator.clipboard?.writeText(text)}>
+                <td data-tooltip="Click to copy" onClick={() => navigator.clipboard?.writeText(text)}>
                   {text}
                 </td>
               </tr>

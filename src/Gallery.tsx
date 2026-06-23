@@ -13,9 +13,15 @@ import {
   ROTATE_MS,
 } from "./state.ts";
 import type { IndexedScheme } from "./types.ts";
-import { Download } from "./Download.tsx";
+import { FormatMenu } from "./FormatMenu.tsx";
 import { ValuesOverlay } from "./ValuesOverlay.tsx";
 import { Icon, ICONS } from "./icons.tsx";
+import { FORMATS, triggerDownload } from "./export.ts";
+
+// Single-file (text) formats are the ones that can be copied as a snippet.
+const COPY_FORMATS = FORMATS.filter((f) => !f.binary);
+// Web Share API is progressive — only show the button where it exists.
+const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -112,17 +118,31 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
     return () => window.clearInterval(id);
   }, [order, paused, tick, show]);
 
-  const onNext = (): void => {
-    const p = (posRef.current + 1) % order.length;
+  const go = (delta: number): void => {
+    const p = (posRef.current + delta + order.length) % order.length;
     posRef.current = p;
     setUrl(order[p].slug, activeTags.peek(), true);
     show(order[p]);
-    setTick((t) => t + 1); // Next resets the dwell timer
+    setTick((t) => t + 1); // manual nav resets the dwell timer
+  };
+  const onPrev = (): void => go(-1);
+  const onNext = (): void => go(1);
+
+  const onShare = (): void => {
+    const url = new URL(location.href);
+    url.searchParams.set("utm_source", "share");
+    void navigator.share({ title: `${current.name} — color.recipes`, url: url.toString() }).catch(() => {});
   };
 
   const counterText =
     `${activeTags.value.length ? activeTags.value.join(" + ") + " · " : ""}` +
     `${order.length} scheme${order.length === 1 ? "" : "s"}`;
+
+  // Show the selected (checked) tags first; stable sort keeps each group's order.
+  const selected = new Set(activeTags.value);
+  const sortedTags = [...current.tags].sort(
+    (a, b) => Number(selected.has(b)) - Number(selected.has(a)),
+  );
 
   return (
     <div
@@ -137,18 +157,83 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
       <div class="caption">
         <h2>{current.name}</h2>
         <div class="meta">
-          {current.tags.map((t) => (
-            <button key={t} type="button" class="chip" onClick={() => toggleTag(t)}>
-              {t}
-            </button>
-          ))}
+          {sortedTags.map((t) => {
+            const active = selected.has(t);
+            return (
+              <button
+                key={t}
+                type="button"
+                class={active ? "chip chip--active" : "chip"}
+                aria-pressed={active}
+                onClick={() => toggleTag(t)}
+              >
+                <span class="chip-add" aria-hidden="true">
+                  {active && (
+                    <span class="ic ic-rest">
+                      <Icon def={ICONS.check} />
+                    </span>
+                  )}
+                  <span class="ic ic-hover">
+                    <Icon def={active ? ICONS.minus : ICONS.plus} />
+                  </span>
+                </span>
+                {t}
+              </button>
+            );
+          })}
         </div>
         <div class="controls">
-          <button type="button" class="btn btn-icon" onClick={onNext}>
-            Next
-            <Icon def={ICONS.arrowRight} />
-          </button>
-          <Download scheme={current} />
+          <div class="pager">
+            <button
+              type="button"
+              class="ctl"
+              aria-label="Prev"
+              data-tooltip="Prev"
+              disabled={order.length <= 1}
+              onClick={onPrev}
+            >
+              <Icon def={ICONS.chevronLeft} />
+            </button>
+            <span class="pos">
+              {order.indexOf(current) + 1} / {order.length}
+            </span>
+            <button
+              type="button"
+              class="ctl"
+              aria-label="Next"
+              data-tooltip="Next"
+              disabled={order.length <= 1}
+              onClick={onNext}
+            >
+              <Icon def={ICONS.chevronRight} />
+            </button>
+          </div>
+          <FormatMenu
+            icon={ICONS.download}
+            title="Download"
+            variant="menu--download"
+            formats={FORMATS}
+            onPick={(f) => {
+              const { filename, blob } = f.generate(current);
+              triggerDownload(filename, blob);
+            }}
+          />
+          <FormatMenu
+            icon={ICONS.clipboard}
+            title="Copy to clipboard"
+            variant="menu--copy"
+            confirmIcon={ICONS.check}
+            formats={COPY_FORMATS}
+            onPick={async (f) => {
+              const { blob } = f.generate(current);
+              await navigator.clipboard?.writeText(await blob.text());
+            }}
+          />
+          {canShare && (
+            <button type="button" class="ctl" aria-label="Share" data-tooltip="Share" onClick={onShare}>
+              <Icon def={ICONS.share} />
+            </button>
+          )}
         </div>
       </div>
       <div class="counter">{counterText}</div>

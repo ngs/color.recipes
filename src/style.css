@@ -355,7 +355,60 @@ body {
   background: rgba(255, 255, 255, 0.12);
   border-color: transparent;
   color: #fff;
-  cursor: default;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* Even inset around the leading circle (left == top == bottom). */
+  padding: 4px 12px 4px 4px;
+}
+
+.caption .meta .chip:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* The leading circle is ALWAYS present (fixed width) so showing/hiding the icon
+   never reflows the tag rows. Unselected tags show a faint "+" that brightens on
+   hover; selected tags show a solid "✓" that swaps to "−" (remove) on hover. */
+.caption .meta .chip .chip-add {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45em;
+  height: 1.45em;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.1;
+  transition: opacity 0.18s ease;
+}
+
+.caption .meta .chip:hover .chip-add,
+.caption .meta .chip:focus-visible .chip-add,
+.caption .meta .chip--active .chip-add {
+  opacity: 1;
+}
+
+.caption .meta .chip .chip-add .fa-icon {
+  font-size: 0.72em;
+}
+
+/* Icon inside the ring: the "rest" icon shows by default, the "hover" icon on
+   hover/focus. Unselected has only a hover icon ("+"), so its ring is empty
+   until hovered; selected shows "✓" at rest and "−" on hover. */
+.caption .meta .chip .chip-add .ic-rest {
+  display: inline-flex;
+}
+.caption .meta .chip .chip-add .ic-hover {
+  display: none;
+}
+.caption .meta .chip:hover .chip-add .ic-rest,
+.caption .meta .chip:focus-visible .chip-add .ic-rest {
+  display: none;
+}
+.caption .meta .chip:hover .chip-add .ic-hover,
+.caption .meta .chip:focus-visible .chip-add .ic-hover {
+  display: inline-flex;
 }
 
 .caption .controls {
@@ -408,13 +461,96 @@ body {
   color: var(--muted);
 }
 
-/* Download dropdown (in the caption controls) */
-.dl {
+/* Caption controls: pager (< n/N >) + icon-button dropdowns + share. */
+.ctl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  background: #1b1f2a;
+  color: var(--fg);
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ctl:hover {
+  border-color: var(--accent);
+}
+
+.ctl:disabled {
+  opacity: 0.4;
+  cursor: default;
+  border-color: var(--line);
+}
+
+.pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pos {
+  min-width: 3.4em;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+/* MUI-style tooltips for the icon controls (replaces the native title).
+   `data-tooltip` carries the label; `aria-label` keeps it for screen readers.
+   Enters with a short delay + a small pop; exits immediately. */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, 4px) scale(0.92);
+  transform-origin: bottom center;
+  white-space: nowrap;
+  background: rgba(23, 25, 34, 0.96);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 20;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+[data-tooltip]:not(:disabled):hover::after,
+[data-tooltip]:not(:disabled):focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  transition-delay: 0.35s; /* MUI-like enter delay; exit stays immediate */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tooltip]::after {
+    transform: translate(-50%, 0);
+    transition: opacity 0.12s ease;
+  }
+}
+
+/* Dropdown menus (download / copy) */
+.menu {
   position: relative;
   display: inline-block;
 }
 
-.dl-menu {
+.menu-list {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
@@ -432,7 +568,7 @@ body {
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
 }
 
-.dl-menu li {
+.menu-list li {
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -441,7 +577,7 @@ body {
   cursor: pointer;
 }
 
-.dl-menu li:hover {
+.menu-list li:hover {
   background: var(--accent);
   color: var(--accent-fg);
 }
@@ -463,7 +599,10 @@ body {
      (see narrow-viewports block). */
   max-width: min(640px, 55vw);
   max-height: 60vh;
-  overflow: auto;
+  /* visible (not auto) so the per-cell "Click to copy" tooltip isn't clipped;
+     the content never exceeds max-height here. The narrow layout re-enables
+     scrolling (touch, where hover tooltips don't apply anyway). */
+  overflow: visible;
 }
 
 .spaces-head {
@@ -724,6 +863,7 @@ textarea {
     left: 12px;
     max-width: none;
     max-height: 42vh;
+    overflow: auto;
     padding: 10px 12px;
     font-size: 11px;
   }
