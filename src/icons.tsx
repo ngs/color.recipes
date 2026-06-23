@@ -1,23 +1,35 @@
-// Font Awesome Pro icons as a Preact component. We import only the icon
-// definitions (tree-shaken) and render an inline <svg> from their path data —
-// no fontawesome-svg-core runtime. Color comes from `currentColor`; size from
-// the shared `.fa-icon` rule (height: 1em).
+// Font Awesome Pro icons rendered as inline SVG (no react-fontawesome / svg-core
+// runtime, no webfont). We import only the icon definitions we use (tree-shaken)
+// and build the <svg> from their path data. Color comes from `currentColor`;
+// size from the shared `.fa-icon` rule (height: 1em).
 import {
   faChevronDown,
+  faChevronLeft,
+  faChevronRight,
   faXmark,
-  faArrowRight,
   faCheck,
-  faDownload,
+  faPlus,
+  faMinus,
+  faArrowDownToBracket,
+  faClipboard,
+  faShareFromSquare,
 } from "@fortawesome/pro-solid-svg-icons";
+import { faSwatchbook } from "@fortawesome/pro-regular-svg-icons";
 
-type FaIcon = typeof faChevronDown;
+export type FaIcon = typeof faChevronDown;
 
 export const ICONS = {
   chevronDown: faChevronDown,
+  chevronLeft: faChevronLeft, // prev
+  chevronRight: faChevronRight, // next
   xmark: faXmark,
-  arrowRight: faArrowRight,
-  check: faCheck,
-  download: faDownload,
+  check: faCheck, // selected tag
+  plus: faPlus, // add tag (hover)
+  minus: faMinus, // remove tag (hover on selected)
+  download: faArrowDownToBracket,
+  clipboard: faClipboard,
+  share: faShareFromSquare,
+  swatchbook: faSwatchbook, // brand mark (regular)
 };
 
 // def.icon = [width, height, ligatures, unicode, pathData]; pathData is a string

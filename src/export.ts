@@ -8,6 +8,8 @@ import { hexToRgb, hexToOklch, luminance } from "./color.ts";
 export interface ExportFormat {
   id: string;
   label: string;
+  /** True for non-text archives (e.g. the .xcassets zip) — excluded from "copy". */
+  binary?: boolean;
   generate(scheme: IndexedScheme): { filename: string; blob: Blob };
 }
 
@@ -158,6 +160,7 @@ export const FORMATS: ExportFormat[] = [
   {
     id: "xcassets",
     label: "Xcode color assets (.xcassets)",
+    binary: true,
     generate: (s) => {
       const dir = `${s.slug}.xcassets`;
       const files: { name: string; data: Uint8Array }[] = [

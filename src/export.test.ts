@@ -33,7 +33,9 @@ describe("export FORMATS", () => {
     expect(await blob.text()).toContain("#04263b");
   });
 
-  it("xcassets export is a zip", () => {
+  it("xcassets export is a zip and flagged binary (excluded from copy)", () => {
     expect(byId("xcassets").generate(scheme).filename).toMatch(/\.zip$/);
+    expect(byId("xcassets").binary).toBe(true);
+    expect(FORMATS.filter((f) => !f.binary).some((f) => f.id === "xcassets")).toBe(false);
   });
 });

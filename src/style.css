@@ -25,14 +25,21 @@ html,
 body {
   margin: 0;
   height: 100%;
+  /* Fill the safe areas (notch / home indicator) with the scheme bg. */
+  background: var(--bg);
+  /* Disable double-tap zoom across the whole page (not inherited, so set high). */
+  touch-action: manipulation;
 }
 
 body {
-  background: var(--bg);
   color: var(--fg);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh; /* exclude the mobile address bar from layout height */
+  /* Disable double-tap zoom + iOS text auto-resize. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
   transition: background-color 0.8s ease, color 0.8s ease;
 }
 
@@ -43,7 +50,14 @@ body {
 .chip,
 .btn,
 .suggest,
-.suggest .sg {
+.suggest .sg,
+.caption,
+.caption h2,
+.ctl,
+.pos,
+.spaces,
+.spaces td,
+.spaces-select {
   transition: background-color 0.8s ease, border-color 0.8s ease, color 0.8s ease;
 }
 
@@ -55,7 +69,14 @@ body {
   .chip,
   .btn,
   .suggest,
-  .suggest .sg {
+  .suggest .sg,
+  .caption,
+  .caption h2,
+  .ctl,
+  .pos,
+  .spaces,
+  .spaces td,
+  .spaces-select {
     transition: none;
   }
 }
@@ -66,12 +87,16 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px 16px;
-  padding: 14px 20px;
+  /* Clear the notch / left+right safe areas so the search isn't under them. */
+  padding: calc(14px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 14px
+    calc(20px + env(safe-area-inset-left));
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
+  /* No backdrop-filter: its mere presence (regardless of visible blur)
+     disqualifies an element from Safari's UI color sampling, which made the
+     notch fall back to black. */
   background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(8px);
   z-index: 10;
 }
 
@@ -87,8 +112,9 @@ body {
   line-height: 1;
 }
 
-/* Logomark scales with the wordmark and inherits its color via currentColor. */
-.brand-mark {
+/* Logomark scales with the wordmark and inherits its color via currentColor.
+   Scoped under .brand so it overrides the shared .fa-icon (height: 1em) sizing. */
+.brand .brand-mark {
   width: 1.35em;
   height: 1.35em;
   flex: none;
@@ -252,7 +278,7 @@ body {
 
 .chip {
   border: 1px solid var(--line);
-  background: #161922;
+  background: var(--bg);
   color: var(--muted);
   border-radius: 999px;
   padding: 4px 11px;
@@ -279,6 +305,16 @@ body {
 }
 
 /* ---------- app / gallery ---------- */
+/* Single Preact root: a column holding the sticky top bar + the main area. */
+#app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  z-index: 100;
+}
+
 .app {
   flex: 1;
   position: relative;
@@ -296,38 +332,111 @@ body {
   position: absolute;
   inset: 0;
   display: flex;
-  opacity: 0;
-  transition: opacity 0.9s ease;
 }
 
-.layer.is-visible {
-  opacity: 1;
+/* Each new bar wipes in: its width grows 0 -> full (scaleX) over the layer
+   below. transform-origin keeps the growth anchored to the bar's left edge. */
+.swatch {
+  flex: 1;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.9s ease;
+}
+
+.layer.is-visible .swatch {
+  transform: scaleX(1);
+}
+
+/* Mounted already-revealed (e.g. right after a swipe): no wipe. */
+.layer.is-instant .swatch {
+  transform: scaleX(1);
+  transition: none;
+}
+
+/* Swipe-to-navigate layers: the base is fully shown, the top wipes over it by
+   --t (driven directly from the touch handler). On release it settles to its
+   target with a short transition. */
+.drag-base .swatch {
+  transform: scaleX(1);
+  transition: none;
+}
+
+.drag-top .swatch {
+  transform: scaleX(var(--t, 0));
+  transition: none;
+}
+
+.drag-top.settling .swatch {
+  transition: transform 320ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .layer {
+  .swatch {
     transition: none;
   }
-}
 
-.swatch {
-  flex: 1;
+  .drag-top.settling .swatch {
+    transition: none;
+  }
 }
 
 /* Scheme caption overlay */
 .caption {
   position: absolute;
-  left: 24px;
-  bottom: 24px;
+  left: calc(24px + env(safe-area-inset-left));
+  bottom: calc(24px + env(safe-area-inset-bottom));
   z-index: 5;
-  background: rgba(0, 0, 0, 0.42);
-  color: #fff;
+  /* The scheme's darkest color, semi-transparent (eases with the theme). */
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  color: var(--fg);
   padding: 14px 18px;
   border-radius: var(--radius);
   backdrop-filter: blur(6px);
   /* Kept under ~40vw so it can never collide with the color-space table pinned
      to the opposite corner (see .spaces). */
   max-width: min(460px, 40vw);
+  /* NOTE: no overflow:hidden here — the download/copy menus open upward beyond
+     the box. The progress fill is clipped by its own track instead. */
+}
+
+/* The caption background doubles as a dwell progress bar: a fill grows
+   left->right over ROTATE_MS, then `animationend` triggers the next scheme.
+   Pausing the animation (animation-play-state) pauses both the bar and rotation
+   together. A dedicated track clips the fill to the rounded box without clipping
+   the menus. */
+.caption-progress-track {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+
+.caption-progress {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: rgba(255, 255, 255, 0.08);
+  animation-name: caption-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes caption-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Caption content sits above the progress fill. */
+.caption > :not(.caption-progress-track) {
+  position: relative;
+  z-index: 1;
 }
 
 .caption h2 {
@@ -343,10 +452,64 @@ body {
 }
 
 .caption .meta .chip {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
   border-color: transparent;
-  color: #fff;
-  cursor: default;
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* Even inset around the leading circle (left == top == bottom). */
+  padding: 4px 12px 4px 4px;
+}
+
+.caption .meta .chip:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* The leading circle is ALWAYS present (fixed width) so showing/hiding the icon
+   never reflows the tag rows. Unselected tags show a faint "+" that brightens on
+   hover; selected tags show a solid "✓" that swaps to "−" (remove) on hover. */
+.caption .meta .chip .chip-add {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45em;
+  height: 1.45em;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.1;
+  transition: opacity 0.18s ease;
+}
+
+.caption .meta .chip:hover .chip-add,
+.caption .meta .chip:focus-visible .chip-add,
+.caption .meta .chip--active .chip-add {
+  opacity: 1;
+}
+
+.caption .meta .chip .chip-add .fa-icon {
+  font-size: 0.72em;
+}
+
+/* Icon inside the ring: the "rest" icon shows by default, the "hover" icon on
+   hover/focus. Unselected has only a hover icon ("+"), so its ring is empty
+   until hovered; selected shows "✓" at rest and "−" on hover. */
+.caption .meta .chip .chip-add .ic-rest {
+  display: inline-flex;
+}
+.caption .meta .chip .chip-add .ic-hover {
+  display: none;
+}
+.caption .meta .chip:hover .chip-add .ic-rest,
+.caption .meta .chip:focus-visible .chip-add .ic-rest {
+  display: none;
+}
+.caption .meta .chip:hover .chip-add .ic-hover,
+.caption .meta .chip:focus-visible .chip-add .ic-hover {
+  display: inline-flex;
 }
 
 .caption .controls {
@@ -399,13 +562,96 @@ body {
   color: var(--muted);
 }
 
-/* Download dropdown (in the caption controls) */
-.dl {
+/* Caption controls: pager (< n/N >) + icon-button dropdowns + share. */
+.ctl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ctl:hover {
+  background-color: var(--accent);
+}
+
+.ctl:disabled {
+  opacity: 0.4;
+  cursor: default;
+  border-color: var(--line);
+}
+
+.pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pos {
+  min-width: 3.4em;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+/* MUI-style tooltips for the icon controls (replaces the native title).
+   `data-tooltip` carries the label; `aria-label` keeps it for screen readers.
+   Enters with a short delay + a small pop; exits immediately. */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, 4px) scale(0.92);
+  transform-origin: bottom center;
+  white-space: nowrap;
+  background: rgba(23, 25, 34, 0.96);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 20;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+[data-tooltip]:not(:disabled):hover::after,
+[data-tooltip]:not(:disabled):focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  transition-delay: 0.35s; /* MUI-like enter delay; exit stays immediate */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tooltip]::after {
+    transform: translate(-50%, 0);
+    transition: opacity 0.12s ease;
+  }
+}
+
+/* Dropdown menus (download / copy) */
+.menu {
   position: relative;
   display: inline-block;
 }
 
-.dl-menu {
+.menu-list {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
@@ -423,7 +669,7 @@ body {
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
 }
 
-.dl-menu li {
+.menu-list li {
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -432,29 +678,36 @@ body {
   cursor: pointer;
 }
 
-.dl-menu li:hover {
+.menu-list li:hover,
+.menu-list li:focus-visible {
   background: var(--accent);
   color: var(--accent-fg);
+  outline: none;
 }
 
 /* ---------- color-space readout ---------- */
 .spaces {
   position: absolute;
-  right: 20px;
-  bottom: 24px;
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(24px + env(safe-area-inset-bottom));
   z-index: 5;
-  background: rgba(0, 0, 0, 0.42);
+  /* Scheme's darkest color, semi-transparent + lightest as fg (eases w/ theme). */
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  color: var(--fg);
   border-radius: var(--radius);
   padding: 12px 14px;
   backdrop-filter: blur(6px);
   font-size: 12px;
   /* Safety cap so the multi-column table can never grow into the caption on the
-     opposite corner. The corner layout is only used wide enough (>1100px) for
+     opposite corner. The corner layout is only used wide enough (>660px) for
      the table's natural width to fit; below that the stacked layout takes over
      (see narrow-viewports block). */
   max-width: min(640px, 55vw);
   max-height: 60vh;
-  overflow: auto;
+  /* visible (not auto) so the per-cell "Click to copy" tooltip isn't clipped;
+     the content never exceeds max-height here. The narrow layout re-enables
+     scrolling (touch, where hover tooltips don't apply anyway). */
+  overflow: visible;
 }
 
 .spaces-head {
@@ -476,7 +729,7 @@ body {
   -webkit-appearance: none;
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--fg);
   padding: 2px 18px 2px 2px; /* right padding reserves room for the chevron */
   font-size: 12px;
   font-weight: 600;
@@ -514,7 +767,7 @@ body {
   font-family: "source-code-variable", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variation-settings: "wght" 200;
   white-space: nowrap;
-  color: #fff;
+  color: var(--fg);
   cursor: pointer;
 }
 
@@ -698,9 +951,10 @@ textarea {
    columns wide, so once the viewport gets narrow the two collide. Stack them
    instead: values pinned to the top, caption to the bottom, each spanning the
    full width with its own internal scroll. */
-@media (max-width: 1100px) {
+@media (max-width: 660px) {
   .topbar {
-    padding: 12px 14px;
+    padding: calc(12px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 12px
+      calc(14px + env(safe-area-inset-left));
     gap: 10px 12px;
   }
 
@@ -710,11 +964,12 @@ textarea {
 
   .spaces {
     top: 12px;
-    right: 12px;
+    right: calc(12px + env(safe-area-inset-right));
     bottom: auto;
-    left: 12px;
+    left: calc(12px + env(safe-area-inset-left));
     max-width: none;
     max-height: 42vh;
+    overflow: auto;
     padding: 10px 12px;
     font-size: 11px;
   }
@@ -724,9 +979,9 @@ textarea {
   }
 
   .caption {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
+    left: calc(12px + env(safe-area-inset-left));
+    right: calc(12px + env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
     max-width: none;
   }
 }

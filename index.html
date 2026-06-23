@@ -2,7 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <!-- Tints the iOS status-bar / browser UI; updated per scheme to var(--bg). -->
+    <meta name="theme-color" content="#0f1115" />
+
+    <!-- Favicons: SVG (retinted per scheme at runtime, see applyTheme) with PNG
+         fallbacks; apple-touch-icon + manifest for installable PWA. -->
+    <link rel="icon" id="favicon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="color.recipes" />
+
     <title>color.recipes</title>
     <meta
       name="description"
@@ -14,22 +32,14 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="color.recipes home">
-        <svg xmlns="http://www.w3.org/2000/svg"
-          class="brand-mark"
-          viewBox="0 0 512 512"
-          aria-hidden="true"
-          focusable="false"><!--!Font Awesome Pro v7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M0 416c0 53 43 96 96 96l416 0 0-192-112.4 0-32 32 112.4 0 0 128-308.3 0 275.5-275.5 11.3-11.3-11.3-11.3-113.1-113.1-11.3-11.3-11.3 11.3-71.5 71.5 0 45.3 82.8-82.8 90.5 90.5-221.4 221.4 0-414.5-192 0 0 416zm96 64c-35.3 0-64-28.7-64-64l0-128 128 0 0 128c0 35.3-28.7 64-64 64zM32 256l0-96 128 0 0 96-128 0zm0-128l0-96 128 0 0 96-128 0zM96 440a24 24 0 1 0 0-48 24 24 0 1 0 0 48z"/></svg>
-        <span class="brand-name">Recipes</span>
-      </a>
-      <!-- The search field (form#search + tokens + suggestions) is rendered here
-           by Preact; display:contents lets the form participate in the top-bar
-           flex layout directly. -->
-      <div id="search-root" style="display: contents"></div>
-    </header>
+    <!-- Safari 26 tints its UI (notch / status bar / bottom bar) by sampling
+         <body>'s background-color, which we keep at the scheme bg (var(--bg)).
+         Edge elements (e.g. the sticky top bar) must NOT use backdrop-filter:
+         its mere presence disqualifies sampling and the notch falls back to
+         black. (andesco/safari-color-tinting) -->
 
-    <main id="app" class="app"></main>
+    <!-- The entire app (top bar + main content) is rendered here by Preact. -->
+    <div id="app"></div>
 
     <script type="module" src="/src/main.tsx"></script>
   </body>
