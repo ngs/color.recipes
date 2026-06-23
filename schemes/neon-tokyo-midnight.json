@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "Neon Tokyo Midnight",
+  "tags": [
+    "night",
+    "neon",
+    "city",
+    "tokyo",
+    "cyberpunk",
+    "magenta",
+    "cyan",
+    "moody"
+  ],
+  "colors": [
+    "#0b0b14",
+    "#1c1740",
+    "#ff2e88",
+    "#00e5ff",
+    "#f2ebff"
+  ],
+  "source": "ai",
+  "createdAt": "2026-06-23"
+}
