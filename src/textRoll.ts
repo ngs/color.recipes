@@ -99,9 +99,13 @@ export interface RollOptions {
 /** Animate `el`'s text from `from` to `to`. Returns a cancel function. */
 export function rollText(el: HTMLElement, from: string, to: string, opts: RollOptions = {}): () => void {
   const { duration = 1200, easing = EASINGS.easeInOutSine } = opts;
-  const len = Math.max(from.length, to.length);
-  const f = [...from.padEnd(len, " ")];
-  const t = [...to.padEnd(len, " ")];
+  // Split into code points first, then pad the arrays — padding the strings by
+  // UTF-16 length would misalign positions for astral characters (emoji etc.).
+  const f = [...from];
+  const t = [...to];
+  const len = Math.max(f.length, t.length);
+  while (f.length < len) f.push(" ");
+  while (t.length < len) t.push(" ");
   const paths = f.map((c, i) => charPath(c, t[i]));
   const N = Math.max(1, ...paths.map((p) => p.length - 1));
 

@@ -37,9 +37,9 @@ function makeOrder(schemes: IndexedScheme[], startSlug: string): IndexedScheme[]
   return order;
 }
 
-// One full-bleed palette layer. Fades in on mount; the previous layer is dropped
-// by the parent once this one is opaque, yielding a crossfade. `instant` skips
-// the wipe (used right after a swipe, which already revealed the new palette).
+// One full-bleed palette layer. Wipes in on mount (per-column scaleX 0 -> 1); the
+// previous layer is dropped by the parent once this one has covered it. `instant`
+// skips the wipe (used right after a swipe, which already revealed the palette).
 function Layer({ scheme, instant }: { scheme: IndexedScheme; instant?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -49,10 +49,10 @@ function Layer({ scheme, instant }: { scheme: IndexedScheme; instant?: boolean }
       el.classList.add("is-visible");
       return;
     }
-    // Force a reflow to commit the opacity:0 start state, then flip to visible so
-    // the 0 -> 1 transition reliably runs. (A requestAnimationFrame here was
-    // flaky for setInterval-driven auto-rotation — the class landed before paint,
-    // so the fade was skipped.)
+    // Force a reflow to commit the scaleX(0) start state, then flip to visible so
+    // the 0 -> 1 wipe reliably runs. (A requestAnimationFrame here was flaky for
+    // setInterval-driven auto-rotation — the class landed before paint, so the
+    // wipe was skipped.)
     void el.offsetWidth;
     el.classList.add("is-visible");
   }, []);

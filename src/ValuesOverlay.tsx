@@ -47,6 +47,7 @@ export function ValuesOverlay({
         <tbody>
           {scheme.colors.map((hex, i) => {
             const text = FORMATTERS[space](hex);
+            const copy = () => void navigator.clipboard?.writeText(text).catch(() => {});
             return (
               // Keyed by position so the row persists and its value rolls.
               <tr key={i}>
@@ -55,7 +56,16 @@ export function ValuesOverlay({
                 </td>
                 <td
                   data-tooltip="Click to copy"
-                  onClick={() => void navigator.clipboard?.writeText(text).catch(() => {})}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Copy ${text}`}
+                  onClick={copy}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      copy();
+                    }
+                  }}
                 >
                   <RollingText text={text} />
                 </td>

@@ -56,6 +56,8 @@ export function FormatMenu({
         class="ctl"
         aria-label={title}
         data-tooltip={title}
+        aria-haspopup="menu"
+        aria-expanded={open}
         // No stopPropagation: letting the click reach document lets any other
         // open menu's outside-click listener close it (this menu's own listener
         // is registered on a deferred timeout, so it won't self-close here).
