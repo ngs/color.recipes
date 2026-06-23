@@ -118,4 +118,6 @@ export function applyTheme(scheme: IndexedScheme): void {
   r.setProperty("--accent-fg", readableText(accent));
   r.setProperty("--line", mix(bg, fg, 0.22));
   r.setProperty("--muted", mix(bg, fg, 0.6));
+  // Tint the iOS status bar / browser UI with the scheme's darkest color.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
 }

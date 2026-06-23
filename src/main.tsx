@@ -8,6 +8,23 @@ import type { SchemeIndex } from "./types.ts";
 const root = document.getElementById("app");
 if (root) render(<App />, root);
 
+// iOS Safari ignores `user-scalable=no`. Block pinch-zoom via the gesture
+// events, and double-tap zoom via a touchend guard (touch-action alone isn't
+// reliable on iOS). Single taps/scrolls/clicks are unaffected.
+for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+}
+let lastTouchEnd = 0;
+document.addEventListener(
+  "touchend",
+  (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  },
+  { passive: false },
+);
+
 // Back/forward: re-derive the filter + start slug from the URL (no new entry).
 window.addEventListener("popstate", () => {
   const loc = parseLocation();

@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <!-- Tints the iOS status-bar / browser UI; updated per scheme to var(--bg). -->
+    <meta name="theme-color" content="#0f1115" />
     <title>color.recipes</title>
     <meta
       name="description"
@@ -14,6 +19,12 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <!-- Safari 26 tints its UI (notch / status bar / bottom bar) by sampling
+         <body>'s background-color, which we keep at the scheme bg (var(--bg)).
+         Edge elements (e.g. the sticky top bar) must NOT use backdrop-filter:
+         its mere presence disqualifies sampling and the notch falls back to
+         black. (andesco/safari-color-tinting) -->
+
     <!-- The entire app (top bar + main content) is rendered here by Preact. -->
     <div id="app"></div>
 
