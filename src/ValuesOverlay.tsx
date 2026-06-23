@@ -75,7 +75,7 @@ export function ValuesOverlay({
                     <RollingText text={text} />
                   </td>
                 ) : (
-                  <td>
+                  <td style={{ cursor: "default" }}>
                     <RollingText text={text} />
                   </td>
                 )}

@@ -5,7 +5,7 @@
 // GitHub API via /api is same-origin but POST-only) are left untouched.
 const CACHE = "color-recipes-v1";
 
-self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("install", (event) => event.waitUntil(self.skipWaiting()));
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -32,7 +32,9 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         try {
           const res = await fetch(req);
-          (await caches.open(CACHE)).put(req, res.clone());
+          // Only cache successful same-origin responses, so an error page (500 /
+          // 404) isn't stored and later served offline.
+          if (res.ok && res.type === "basic") (await caches.open(CACHE)).put(req, res.clone());
           return res;
         } catch {
           return (await caches.match(req)) ?? (await caches.match("/")) ?? Response.error();

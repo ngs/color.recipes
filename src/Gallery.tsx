@@ -25,6 +25,9 @@ import { FORMATS, triggerDownload } from "./export.ts";
 const COPY_FORMATS = FORMATS.filter((f) => !f.binary);
 // Web Share API is progressive — only show the button where it exists.
 const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+// Clipboard copy is only offered in a secure context; otherwise the copy menu is
+// hidden entirely (rather than reporting a no-op copy as successful).
+const canCopy = typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function";
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -440,17 +443,19 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
               triggerDownload(filename, blob);
             }}
           />
-          <FormatMenu
-            icon={ICONS.clipboard}
-            title="Copy to clipboard"
-            variant="menu--copy"
-            confirmIcon={ICONS.check}
-            formats={COPY_FORMATS}
-            onPick={async (f) => {
-              const { blob } = f.generate(current);
-              await navigator.clipboard?.writeText(await blob.text());
-            }}
-          />
+          {canCopy && (
+            <FormatMenu
+              icon={ICONS.clipboard}
+              title="Copy to clipboard"
+              variant="menu--copy"
+              confirmIcon={ICONS.check}
+              formats={COPY_FORMATS}
+              onPick={async (f) => {
+                const { blob } = f.generate(current);
+                await navigator.clipboard.writeText(await blob.text());
+              }}
+            />
+          )}
           {canShare && (
             <button type="button" class="ctl" aria-label="Share" data-tooltip="Share" onClick={onShare}>
               <Icon def={ICONS.share} />
