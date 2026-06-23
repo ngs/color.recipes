@@ -223,7 +223,13 @@ export function Gallery({ schemes, startSlug }: { schemes: IndexedScheme[]; star
                 type="button"
                 class={active ? "chip chip--active" : "chip"}
                 aria-pressed={active}
-                onClick={() => toggleTag(t)}
+                // Drop focus before toggling: chips are keyed by position, so the
+                // re-sort (selected-first) would otherwise leave the focus ring
+                // stuck on whatever tag lands at this index.
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  toggleTag(t);
+                }}
               >
                 <span class="chip-add" aria-hidden="true">
                   {active && (
